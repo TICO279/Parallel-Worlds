@@ -32,7 +32,7 @@ export class HiggsClient {
   private pendingInstructions?: { version: number; instructions: string };
   private applying?: { version: number; instructions: string; timer: ReturnType<typeof setTimeout> };
   private appliedVersion = 0; private updateFailed = false; private userSpeaking = false; private awaitingResponse = false;
-  private latestUserId?: string; private currentResponseId?: string;
+  private latestUserId?: string; private currentResponseId?: string; private typedAt?: number;
   private metrics = new Map<string, LatencyRecord>(); private responseTurns = new Map<string, string>();
   private inputMs = 0; private inputClock: { startMs: number; endMs: number; at: number }[] = [];
   constructor(private options: ClientOptions) {}
@@ -46,7 +46,7 @@ export class HiggsClient {
     const gen = ++this.gen; this.setState('connecting'); this.blocked.clear(); this.hadSession = false;
     this.currentItem = undefined; this.generating = false; this.queued = false;
     this.appliedVersion = 0; this.updateFailed = false; this.userSpeaking = false; this.awaitingResponse = false;
-    this.latestUserId = undefined; this.currentResponseId = undefined; this.metrics.clear(); this.responseTurns.clear();
+    this.latestUserId = undefined; this.currentResponseId = undefined; this.typedAt = undefined; this.metrics.clear(); this.responseTurns.clear();
     this.inputMs = 0; this.inputClock = [];
     this.controller = new AbortController();
     const alive = () => gen === this.gen;
@@ -166,6 +166,15 @@ export class HiggsClient {
           this.emitMetric(metric);
         }
         break;
+      case 'conversation.item.added': {
+        // The echo of a typed turn carries its item id; the send time stands in for the end of speech.
+        const item = event.item as { id?: string; role?: string } | undefined;
+        if (this.typedAt !== undefined && item?.role === 'user' && item.id) {
+          this.latestUserId = item.id; const metric = this.metric(item.id);
+          metric.speechStoppedAt = this.typedAt; this.typedAt = undefined; this.emitMetric(metric);
+        }
+        break;
+      }
       case 'conversation.item.input_audio_transcription.completed':
         if (typeof event.item_id === 'string') { const metric = this.metric(event.item_id); metric.transcriptFinalAt = performance.now(); this.emitMetric(metric); }
         break;
@@ -210,6 +219,16 @@ export class HiggsClient {
     if (gen !== this.gen) return;
     this.options.onEvent({ type: 'client.interrupted', item_id: id, played_ms: played });
     this.send(truncateItem(id, played));
+  }
+  /** A typed turn, only while the microphone is off. Like speaking over the character, it interrupts any reply still playing. */
+  sendText(text: string): boolean {
+    if (this.state !== 'ready' || this.mic?.active || !text.trim()) return false;
+    void this.bargeIn(this.gen);
+    this.awaitingResponse = true; this.typedAt = performance.now();
+    this.send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: text.trim() }] } });
+    this.send({ type: 'response.create' });
+    this.options.onActivity('thinking');
+    return true;
   }
   async toggleMic(): Promise<void> {
     if (this.state !== 'ready' || !this.mic) return;

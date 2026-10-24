@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Conversation, ProtocolEvent, Scenario, SessionBootstrap, StoredSession } from '../shared/domain';
 import { emptyConversation, orderedTurns, reduceTranscript } from '../shared/transcript';
 import { HiggsClient, type Activity, type ConnectionState } from './realtime/HiggsClient';
@@ -12,6 +12,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null); const [recording, setRecording] = useState<string | null>(null);
   const [conversation, setConversation] = useState(emptyConversation); const [session, setSession] = useState<StoredSession | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null); const [exporting, setExporting] = useState(false);
+  const [draft, setDraft] = useState('');
   const selectedRef = useRef(selected); selectedRef.current = selected;
   const [mode, setMode] = useState<'static' | 'adaptive'>('static'); const modeRef = useRef(mode); modeRef.current = mode;
   const [adaptation, setAdaptation] = useState<AdaptationData | null>(null);
@@ -56,7 +57,7 @@ export function App() {
         state.current = reduceTranscript(state.current, e, Date.now());
         if (mounted) setConversation(state.current);
         if (e.type.endsWith('.completed') || e.type.endsWith('.failed') || e.type.endsWith('.done') ||
-          ['client.interrupted', 'client.closed', 'input_audio_buffer.committed'].includes(e.type))
+          ['client.interrupted', 'client.closed', 'input_audio_buffer.committed', 'conversation.item.added'].includes(e.type))
           recorder.current?.snapshot(orderedTurns(state.current));
         if (e.type === 'client.closed') recorder.current?.status('closed');
       },
@@ -85,6 +86,10 @@ export function App() {
   useEffect(() => { if (conversation.order.length) transcriptEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [conversation]);
   const scenario = scenarios.find(s => s.id === selected); const sessionScenario = scenarios.find(s => s.id === session?.scenarioId) ?? scenario;
   const busy = connection === 'connecting' || connection === 'ready' || connection === 'closing';
+  function sendDraft(event: FormEvent) {
+    event.preventDefault();
+    if (client.current?.sendText(draft)) setDraft('');
+  }
   async function exportConversation() {
     if (!session || !recorder.current) return;
     setExporting(true);
@@ -128,16 +133,21 @@ export function App() {
                 <span>{busy ? '■' : '↗'}</span>{connection === 'closing' ? 'Ending conversation…' : connection === 'connecting' ? 'Cancel connection' : connection === 'ready' ? 'End conversation' : 'Start conversation'}
               </button>
               <div className="mic-row"><button className={`mic-button ${mic ? 'mic-on' : ''}`} disabled={connection !== 'ready' || micBusy} aria-pressed={mic} onClick={async () => { setMicBusy(true); await client.current?.toggleMic(); setMicBusy(false); }}>{mic ? '● Microphone on' : '○ Enable microphone'}</button><meter aria-label="Microphone level" min={0} max={1} value={Math.min(1, level * 4)}/></div>
-              <p className="control-note">{connection === 'ready' ? 'Enable your microphone and say hello. You can interrupt naturally.' : 'A live voice conversation, at your own pace.'}</p>
+              <p className="control-note">{connection === 'ready' ? mic ? 'Speak naturally. Turn the microphone off to type instead.' : 'Type a message, or enable your microphone and say hello.' : 'A live voice conversation, at your own pace.'}</p>
             </div>
           </section>
           <section className="transcript-card" aria-labelledby="transcript-title">
             <div className="transcript-header"><div><span className="eyebrow">IN THE MOMENT</span><h2 id="transcript-title">Your conversation</h2></div><button className="export-button" disabled={!session || exporting} onClick={() => void exportConversation()}>{exporting ? 'Saving…' : '↓ Export JSON'}</button></div>
             <div className="live-indicator"><span className={`status-dot ${connection === 'ready' ? 'live' : ''}`}/>{connection === 'ready' ? activity === 'speaking' ? `${scenario?.character.name} is speaking` : activity === 'thinking' ? 'Considering your response' : mic ? 'Listening to you' : 'Microphone is off' : 'Your space to explore'}<span>{turns.length ? `${turns.length} turns` : 'USER SPEAKS FIRST'}</span></div>
             <div className="transcript-scroll" role="log" aria-label="Conversation transcript" aria-live="polite" aria-relevant="additions text">
-              {!turns.length ? <div className="empty-transcript"><div className="sound-bars" aria-hidden="true">{[12, 24, 38, 57, 32, 65, 44, 26, 40, 19, 10].map((h,i) => <i key={i} style={{ height: h }}/>)}</div><h3>Good conversations<br/>begin with a little curiosity.</h3><p>Start your session, turn on your microphone,<br/>and see what a simple hello can become.</p><span className="empty-line"/></div>
+              {!turns.length ? <div className="empty-transcript"><div className="sound-bars" aria-hidden="true">{[12, 24, 38, 57, 32, 65, 44, 26, 40, 19, 10].map((h,i) => <i key={i} style={{ height: h }}/>)}</div><h3>Good conversations<br/>begin with a little curiosity.</h3><p>Start your session, then type or turn on your microphone,<br/>and see what a simple hello can become.</p><span className="empty-line"/></div>
                 : turns.map(t => <article className={`turn ${t.role}`} key={t.itemId}><div className="turn-heading"><strong>{t.role === 'user' ? 'YOU' : sessionScenario?.character.name.toUpperCase()}</strong><time>{new Date(t.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div><p>{t.text || (t.transcriptionFailed ? '[Transcription unavailable]' : t.role === 'user' && t.status !== 'incomplete' ? 'Transcribing…' : t.status === 'incomplete' ? '[Turn unfinished]' : '…')}</p>{t.status === 'interrupted' && <small className="turn-note">Interrupted · {(t.playedMs ?? 0).toFixed(0)} ms played · Generated text may include unheard words.</small>}{t.status === 'incomplete' && <small className="turn-note">{t.transcriptionFailed ? 'Speech occurred, but its transcript failed.' : 'Session ended before this turn was finalized.'}</small>}</article>)}<div ref={transcriptEnd}/>
             </div>
+            <form className="composer" onSubmit={sendDraft}>
+              <input aria-label="Type a message" value={draft} disabled={connection !== 'ready' || mic} onChange={e => setDraft(e.target.value)}
+                placeholder={connection !== 'ready' ? 'Start the conversation to type a message' : mic ? 'Microphone is on. Turn it off to type.' : `Type a message to ${sessionScenario?.character.name ?? 'Alex'}…`}/>
+              <button type="submit" disabled={connection !== 'ready' || mic || !draft.trim()}>Send ↗</button>
+            </form>
             <div className="transcript-footer"><span>{recording ?? (session ? 'Recorded in local server memory' : 'Transcripts appear here as you talk')}</span><span>◌</span></div>
           </section>
         </div>

@@ -150,4 +150,23 @@ describe('Higgs adapter with mocked transport and audio', () => {
     expect(h.opts.onError).toHaveBeenCalledWith(expect.stringContaining('Allow microphone'));
     expect(h.client.connectionState).toBe('ready'); await h.client.disconnect();
   });
+  it('sends a typed turn only while the session is ready and the microphone is off', async () => {
+    const h = harness(); await h.client.connect(); h.socket.open();
+    expect(h.client.sendText('hi')).toBe(false);
+    h.socket.receive({ type: 'session.created' });
+    expect(h.client.sendText('   ')).toBe(false); expect(h.client.sendText('  Hello there ')).toBe(true);
+    expect(h.socket.sent.slice(1)).toEqual([
+      { type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Hello there' }] } },
+      { type: 'response.create' }]);
+    await h.client.toggleMic(); expect(h.client.sendText('typed while speaking')).toBe(false);
+    expect(h.socket.sent).toHaveLength(3); await h.client.disconnect();
+  });
+  it('attributes response latency to the echoed typed turn', async () => {
+    const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
+    h.client.sendText('Hello');
+    h.socket.receive({ type: 'conversation.item.added', item: { id: 'u1', role: 'user', content: [{ type: 'input_text', text: 'Hello' }] } });
+    h.socket.receive({ type: 'response.created', response: { id: 'r1' } });
+    expect(h.opts.onLatency).toHaveBeenLastCalledWith(expect.objectContaining({ turnId: 'u1', responseId: 'r1', speechStoppedAt: expect.any(Number) }));
+    await h.client.disconnect();
+  });
 });
