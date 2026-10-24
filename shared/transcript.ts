@@ -65,6 +65,11 @@ export function reduceTranscript(before: Conversation, e: ProtocolEvent, now: nu
       const t = id && s.items[id] ? ensure('assistant') : undefined;
       if (t) { t.status = 'interrupted'; t.playedMs = typeof e.played_ms === 'number' ? e.played_ms : 0; } break;
     }
+    case 'client.playback_complete': {
+      const t=id&&s.items[id]?ensure('assistant'):undefined;
+      if(t&&t.status!=='interrupted'&&t.status!=='incomplete') t.playbackComplete=true;
+      break;
+    }
     case 'response.done': {
       for (const [key, turn] of Object.entries(s.items)) {
         if (turn.role === 'assistant' && turn.responseId === response.id && response.status !== 'completed' && turn.status !== 'interrupted')

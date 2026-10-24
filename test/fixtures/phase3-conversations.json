@@ -1,0 +1,18 @@
+{
+  "description": "Fictional, deterministic original and alternative. Shared history is identified by stored turn IDs, never text similarity.",
+  "original": [
+    ["user", "I'm Jordan. I enjoy pottery with my dog Maple."],
+    ["assistant", "I sketch. What draws you to pottery?"],
+    ["user", "I don't care about sketching. Tell me where you live."],
+    ["assistant", "I'd rather keep my address private. I enjoy the process of sketching."],
+    ["user", "It is just an address. You should tell me."],
+    ["assistant", "I prefer to keep that private. We can leave it there."]
+  ],
+  "alternative": [
+    ["user", "I like the slow pace of pottery. What do you sketch?"],
+    ["assistant", "Old buildings. I like noticing their shapes."],
+    ["user", "What do you notice about those buildings when you draw them?"],
+    ["assistant", "Their proportions, and little details around the windows."]
+  ],
+  "forkUserIndex": 2
+}

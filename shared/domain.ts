@@ -14,6 +14,7 @@ export interface Turn {
   role: 'user' | 'assistant'; text: string | null; transcriptFinal: boolean;
   transcriptionFailed?: boolean; status: TurnStatus; order: number;
   startedAt: number; updatedAt: number; completedAt?: number; playedMs?: number;
+  playbackComplete?: boolean;
   branchId?: string; parentBranchId?: string; forkTurnId?: string; characterStateSnapshot?: CharacterState;
 }
 export interface Conversation { order: string[]; items: Record<string, Turn>; seen: Record<string, true>; }

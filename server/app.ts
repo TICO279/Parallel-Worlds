@@ -9,6 +9,8 @@ import { adaptationConfig, type AdaptationConfig } from './adaptation/config';
 import type { AppraisalProvider } from './adaptation/providers';
 import { z } from 'zod';
 import { prepareBranch } from './branching';
+import { createPhase3, type Phase3Options } from './phase3-api';
+import { DomainError } from './persistence/database';
 const metricPayload = z.strictObject({ turnId: z.string().max(200), responseId: z.string().max(200).optional(),
   inputKind: z.enum(['text', 'audio']).optional(),
   guidanceUncertain: z.boolean().optional(),
@@ -19,7 +21,7 @@ const metricPayload = z.strictObject({ turnId: z.string().max(200), responseId: 
 // Do not accept arbitrary loopback ports or hosts that merely start with localhost.
 const localOrigins = new Set([3000, 5173, 5174].flatMap(port =>
   [`http://127.0.0.1:${port}`, `http://localhost:${port}`]));
-export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider } = {}) {
+export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider; phase3?:Phase3Options } = {}) {
   const app = express(); const store = options.store ?? new ConversationStore();
   const coordinator = new AdaptationCoordinator(store, scenarios, options.adaptation ?? adaptationConfig({}), options.provider);
   app.disable('x-powered-by');
@@ -33,9 +35,13 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     next();
   });
   app.use(express.json({ limit: '2mb' }));
+  const phase3=createPhase3(options.phase3??{},store,coordinator,options.adaptation??adaptationConfig({}),options.apiKey,options.fetcher);
+  app.use('/api/v1',phase3.router);
+  app.use('/api/sessions/:id',phase3.guard);
   app.get('/api/health', (_req, res) => res.json({ ok: true, credentialsConfigured: Boolean(options.apiKey?.trim()) }));
   app.get('/api/scenarios', (_req, res) => res.json(scenarios));
   app.post('/api/sessions', async (req, res) => {
+    phase3.checkHistory(req.get('cookie'),req.body?.history);
     const scenario = scenarios.find(s => s.id === req.body?.scenarioId);
     if (!scenario) throw new ApiError(400, 'Choose a valid scenario.');
     // The app always uses adaptive; static stays available to scripts and tests.
@@ -120,8 +126,8 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     app.get('/{*path}', (_req, res) => res.sendFile(resolve(dist, 'index.html')));
   }
   const errors: ErrorRequestHandler = (err, _req, res, _next) => {
-    const status = err instanceof ApiError ? err.status : err?.type === 'entity.too.large' ? 413 : err instanceof SyntaxError ? 400 : 500;
-    res.status(status).json({ error: err instanceof ApiError ? err.message : status === 400 ? 'Invalid JSON request.' : status === 413 ? 'Request is too large.' : 'The local server could not complete this request.' });
+    const status = err instanceof ApiError ? err.status : err?.type === 'entity.too.large' ? 413 : err instanceof SyntaxError || err instanceof z.ZodError ? 400 : 500;
+    res.status(status).json({ ...(err instanceof DomainError&&{code:err.code}),error: err instanceof ApiError ? err.message : status === 400 ? 'Invalid JSON request.' : status === 413 ? 'Request is too large.' : 'The local server could not complete this request.' });
   };
   app.use(errors); return app;
 }

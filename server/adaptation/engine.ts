@@ -16,7 +16,7 @@ export function transitionState(previous: DynamicCharacterState, raw: unknown, t
   if (turn.role !== 'user' || !turn.transcriptFinal || turn.status !== 'complete' || !turn.text?.trim()) throw new Error('A finalized user turn is required.');
   if (!Number.isFinite(maxDelta) || maxDelta < 0 || maxDelta > 1) throw new Error('Invalid state delta limit.');
   const appraisal = appraisalSchema.parse(raw); const version = previous.version + 1;
-  const next = { ...previous, id: `${previous.sessionId}:main:${version}`, version, previousStateId: previous.id,
+  const next = { ...previous, id: `${previous.sessionId}:${previous.branchId}:${version}`, version, previousStateId: previous.id,
     lastProcessedTurnId: turn.itemId, lastProcessedOrder: turn.order, timestamp,
     tone: appraisal.tone, goal: appraisal.goal, guidance: appraisal.guidance };
   for (const name of metricNames) next[name] = Number(Math.min(1, Math.max(0,

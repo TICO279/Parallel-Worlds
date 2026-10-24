@@ -11,7 +11,7 @@ export class SessionRecorder {
   private lifecycle?: { status: StoredSession['status']; bosonSessionId?: string };
   private running = false; private timer?: ReturnType<typeof setTimeout>; private disposed = false;
   constructor(readonly id: string, private onStatus: (message: string | null) => void,
-    private request: typeof api = api) {}
+    private request: typeof api = api, private conversationUrl = `/api/sessions/${id}/conversation`) {}
   snapshot(turns: Turn[]) { this.pending = { revision: ++this.revision, turns: structuredClone(turns) }; void this.flush(); }
   status(status: StoredSession['status'], bosonSessionId?: string) { this.lifecycle = { status, ...(bosonSessionId && { bosonSessionId }) }; void this.flush(); }
   async flush(): Promise<boolean> {
@@ -21,7 +21,7 @@ export class SessionRecorder {
       while (this.pending || this.lifecycle) {
         const snapshot = this.pending; const lifecycle = this.lifecycle;
         if (snapshot) {
-          await this.request(`/api/sessions/${this.id}/conversation`, { method: 'PUT', body: JSON.stringify(snapshot) });
+          await this.request(this.conversationUrl, { method: 'PUT', body: JSON.stringify(snapshot) });
           if (this.pending === snapshot) this.pending = undefined;
         }
         if (lifecycle) {
