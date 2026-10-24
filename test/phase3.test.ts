@@ -105,6 +105,12 @@ describe('durable branching MVP',()=>{
     const changed=new BranchManager(h.db,h.store,config,{...qualification,scenarioHashes:{'alex-first-date':'changed-profile'}}),c=h.manager.conversation(owner,h.conversation.id);
     expect(()=>changed.restore(owner,c.id,{branchId:h.branch.id,expectedConversationRevision:c.revision,expectedActiveEpoch:c.activeEpoch})).toThrow('context tests');
   });
+  it('cannot activate a connection that closed during setup',()=>{
+    const h=setup(),c=h.manager.conversation(owner,h.conversation.id),op=h.manager.restore(owner,c.id,{branchId:h.branch.id,expectedConversationRevision:c.revision,expectedActiveEpoch:0}),a=h.manager.prepareAttachment(owner,op.id);
+    h.store.lifecycle(a.attachment.sessionId,{status:'closed'});
+    expect(()=>h.manager.restoreEvent(owner,op.id,{attemptId:a.op.attemptId!,prefixHash:op.prefixHash,status:'ready'})).toThrow('closed connection');
+    expect(h.manager.conversation(owner,c.id).activeEpoch).toBe(0);
+  });
 });
 describe('restoration transport gate',()=>{
   const history=[{nodeId:'s/u1',sessionId:'s',itemId:'u1',role:'user' as const,text:'Maple likes pottery.'},{nodeId:'s/a1',sessionId:'s',itemId:'a1',role:'assistant' as const,text:'What about weekends?'}];

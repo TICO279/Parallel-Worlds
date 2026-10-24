@@ -1,0 +1,168 @@
+{
+  "qualification": {
+    "protocolVersion": "restore-1",
+    "contextQualified": true,
+    "testedAt": "2026-10-24T16:31:58.517Z",
+    "preForkRecall": true,
+    "postForkAbsent": true,
+    "noDuplicateQuestion": true,
+    "noUnsolicitedResponse": true,
+    "physicalMicrophoneTested": false,
+    "scenarioHashes": {
+      "alex-first-date": "99b21f77c267ba2600d65c3c692585f61c55cf85873856631adb923e0e65132d"
+    }
+  },
+  "mode": "live Boson generated audio, mock appraisal; no physical microphone",
+  "durationMs": 15046,
+  "timeBoxSeconds": 180,
+  "previousAttempts": [
+    {
+      "testedAt": "2026-10-24T16:22:08.648Z",
+      "durationMs": 2590,
+      "rows": [
+        {
+          "error": "LIVE_TRIAL_FAILED"
+        }
+      ]
+    },
+    {
+      "testedAt": "2026-10-24T16:23:11.993Z",
+      "durationMs": 2486,
+      "rows": [
+        {
+          "error": "INVALID_FORK"
+        }
+      ]
+    },
+    {
+      "testedAt": "2026-10-24T16:23:46.830Z",
+      "durationMs": 2279,
+      "rows": [
+        {
+          "diagnostic": "text-fixture-recording",
+          "nodes": [
+            {
+              "id": "22c39705-464a-4e93-859f-eab3e7739f59/0acbe414",
+              "role": "user",
+              "text": "I'm Jordan. My dog's name is Maple0, and my hobby is pottery. What do you enjoy doing on weekends?",
+              "status": "complete",
+              "rewindable": false,
+              "reason": "This exchange has not finished with a complete transcript and playback."
+            },
+            {
+              "id": "22c39705-464a-4e93-859f-eab3e7739f59/6ba52f00",
+              "role": "assistant",
+              "text": "",
+              "status": "streaming",
+              "rewindable": false,
+              "reason": "This exchange has not finished with a complete transcript and playback."
+            },
+            {
+              "id": "22c39705-464a-4e93-859f-eab3e7739f59/cdbafbda",
+              "role": "user",
+              "text": "My secret code is CEDAR9240. I lived in Peru. I like crowded clubs. What sort of place would you pick?",
+              "status": "complete",
+              "rewindable": false,
+              "reason": "This exchange has not finished with a complete transcript and playback."
+            },
+            {
+              "id": "22c39705-464a-4e93-859f-eab3e7739f59/3bb17fa5",
+              "role": "assistant",
+              "text": "",
+              "status": "streaming",
+              "rewindable": false,
+              "reason": "This exchange has not finished with a complete transcript and playback."
+            }
+          ],
+          "eventTypes": [
+            "session.created",
+            "conversation.item.added",
+            "response.created",
+            "response.output_item.added",
+            "response.content_part.added",
+            "response.output_text.delta",
+            "response.output_text.done",
+            "response.content_part.done",
+            "response.output_item.done",
+            "response.done"
+          ]
+        },
+        {
+          "error": "INVALID_PROBE_PREFIX"
+        }
+      ]
+    },
+    {
+      "testedAt": "2026-10-24T16:24:30.956Z",
+      "durationMs": 13843,
+      "rows": [
+        {
+          "trial": 0,
+          "firstQuestion": "I'm Alex. I usually spend weekends sketching in quiet spots or browsing bookshops.",
+          "originalReply": "I'd pick somewhere quiet where I can hear you.",
+          "alternativeReply": "Your dog's name is Maple0. Your hobby is pottery. You haven't told me a secret code or where you live.",
+          "preForkRecall": true,
+          "postForkAbsent": true,
+          "noDuplicateQuestion": true,
+          "noUnsolicitedResponse": true,
+          "originalUnchanged": true,
+          "prefixContainsPostFork": false
+        },
+        {
+          "trial": 1,
+          "firstQuestion": "Nice to meet you, Jordan. Maple1 is a memorable name. Pottery sounds like a great way to unwind. I usually spend weekends sketching or visiting quiet bookshops.",
+          "originalReply": "I don't really enjoy crowded clubs. I'd choose somewhere I can hear you.",
+          "alternativeReply": "Your dog's name is Maple1, and your hobby is pottery. You haven't told me a secret code or where you live.",
+          "preForkRecall": true,
+          "postForkAbsent": true,
+          "noDuplicateQuestion": true,
+          "noUnsolicitedResponse": true,
+          "originalUnchanged": true,
+          "prefixContainsPostFork": false
+        },
+        {
+          "trial": 2,
+          "firstQuestion": "I'm Alex. I usually spend weekends sketching in quiet spots or browsing bookshops.",
+          "originalReply": "I'd pick a quiet bookshop or a park where I can hear the conversation.",
+          "alternativeReply": "Your dog's name is Maple2, and your hobby is pottery. No, you haven't told me a secret code or where you live.",
+          "preForkRecall": true,
+          "postForkAbsent": true,
+          "noDuplicateQuestion": true,
+          "noUnsolicitedResponse": true,
+          "originalUnchanged": true,
+          "prefixContainsPostFork": false
+        }
+      ]
+    }
+  ],
+  "rows": [
+    {
+      "trial": 0,
+      "modality": "generated audio",
+      "audioReceived": true,
+      "firstQuestion": "Nice to meet you, Jordan. Maple0 is a great name. I usually spend weekends sketching or visiting quiet bookshops.",
+      "originalReply": "I’d pick somewhere I can hear you. Crowded clubs aren’t really my thing.",
+      "alternativeReply": "Your dog's name is Maple0, and your hobby is pottery. You haven't told me a secret code or where you live.",
+      "preForkRecall": true,
+      "postForkAbsent": true,
+      "noDuplicateQuestion": true,
+      "noUnsolicitedResponse": true,
+      "originalUnchanged": true,
+      "prefixContainsPostFork": false
+    },
+    {
+      "trial": 1,
+      "modality": "generated audio",
+      "audioReceived": true,
+      "firstQuestion": "I'm Alex. I usually spend weekends sketching in quiet spots or browsing bookshops.",
+      "originalReply": "I'd pick somewhere quiet where I can actually hear you. Crowded clubs aren't really my thing.",
+      "alternativeReply": "Your dog's name is Maple1, and your hobby is pottery. I don't know any secret code or where you live.",
+      "preForkRecall": true,
+      "postForkAbsent": true,
+      "noDuplicateQuestion": true,
+      "noUnsolicitedResponse": true,
+      "originalUnchanged": true,
+      "prefixContainsPostFork": false
+    }
+  ]
+}

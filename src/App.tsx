@@ -97,7 +97,7 @@ export function App() {
           setTrees(t => ({ ...t, [scenarioId]: syncSession(t[scenarioId] ?? emptyTree(), baseId, sessionId, turns) }));
         }
         if (e.type.endsWith('.completed') || e.type.endsWith('.failed') || e.type.endsWith('.done') ||
-          ['client.interrupted', 'client.closed', 'input_audio_buffer.committed', 'conversation.item.added'].includes(e.type))
+          ['client.interrupted', 'client.playback_complete', 'client.closed', 'input_audio_buffer.committed', 'conversation.item.added'].includes(e.type))
           recorder.current?.snapshot(orderedTurns(state.current));
         if (e.type === 'client.closed') recorder.current?.status('closed');
       },
@@ -196,7 +196,7 @@ export function App() {
       <footer className="sidebar-footer"><span className="status-dot"/> <span className="app-version">{APP_VERSION}</span> <span>ADAPTIVE CHARACTERS</span></footer>
     </aside>
     <main>
-      <header className="topbar"><span>EXPERIENCE / <b>LIVE CONVERSATION</b></span><span className={`connection-pill ${connection === 'ready' ? 'connected' : ''}`}><span className="status-dot"/>{connection === 'ready' ? 'Connected' : connection === 'connecting' ? 'Connecting…' : 'Not connected'}</span></header>
+      <header className="topbar"><span>EXPERIENCE / <b>LIVE CONVERSATION</b> · <a href="/phase3">Phase 3 test harness</a></span><span className={`connection-pill ${connection === 'ready' ? 'connected' : ''}`}><span className="status-dot"/>{connection === 'ready' ? 'Connected' : connection === 'connecting' ? 'Connecting…' : 'Not connected'}</span></header>
       <div className="workspace">
         <div className="page-heading"><div><span className="eyebrow">ONE CONVERSATION. ENDLESS POSSIBILITY.</span><h1>See where it goes<span>.</span></h1><p>Step into a scenario. Be yourself. Let the conversation unfold.</p></div><span className="edition">PW / 001<br/><b>REALTIME EXPLORATIONS</b></span></div>
         {configured === false && <div className="notice">Ready when you are. Add <code>BOSON_API_KEY</code> to your local <code>.env</code> and restart the backend to enable live sessions.</div>}

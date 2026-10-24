@@ -4,12 +4,28 @@ A local voice-conversation lab powered by Boson Higgs Realtime. Phase 1 includes
 Alex's first date and Morgan's mock interview, microphone streaming, server VAD,
 interruptions, ordered transcripts, and JSON export.
 
+**Phase 3 hackathon MVP (feature branch):** durable SQLite conversations, an original
+and one independent alternative, gated context restoration, asynchronous DeepSeek/mock
+suggestions, conservative communication evaluation, and a small two-path test harness
+at **[/phase3](http://127.0.0.1:5173/phase3)**. The separate mobile frontend consumes the
+[documented API and reusable TypeScript client](docs/phase3-api.md); this branch does
+not redesign that frontend. See [usage and scope](docs/phase3-mvp.md) and the
+[verification report](docs/phase3-verification.md). **265 tests pass**. Live Boson checks
+cover text/generated-audio context restoration; DeepSeek checks cover suggestions and
+evidence-based assessments. Physical microphone rewind remains unverified.
+
+The normal server entry now persists backend sessions/checkpoints to ignored
+`data/parallel-worlds.sqlite`. Restarting closes old socket attachments while preserving
+saved records. Earlier sections describing memory-only retention document the previous
+baseline; the existing browser tree remains a legacy lab feature. The Phase 3 API owns
+its branch history entirely on the server.
+
 **Phase 2:** Every conversation is adaptive: mock or opt-in live appraisal (DeepSeek Flash
 preferred), versioned character state,
 asynchronous instruction updates and a development panel. The page no longer offers
 Static mode; the API still accepts `mode: "static"` for scripts and evaluations. See [Phase 2 configuration, live evidence and limitations](docs/phase2.md).
 The [tone and realism baseline](docs/realism-implementation.md) adds grounded appraisal,
-mixed reactions, bounded concern memory and saved instruction context. Current validation:
+mixed reactions, bounded concern memory and saved instruction context. Phase 2 baseline validation:
 **228 automated tests pass**, including all 42 baseline tests;
 type checking and production build pass. Live Boson checks cover instruction updates,
 generated audio steering, DeepSeek structured appraisal and static/adaptive text comparisons.

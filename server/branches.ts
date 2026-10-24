@@ -108,10 +108,13 @@ export class BranchManager {
     if(op.status===input.status) return op;
     if(op.status!=='connecting'||op.expiresAt<Date.now()||c.revision!==op.expectedConversationRevision) conflict('STALE_ATTEMPT','This restoration was superseded or expired.');
     const a=this.db.get<Attachment>('attachment',op.sessionId!,owner);
+    if(input.status==='ready'&&['closed','error'].includes(this.store.get(a.sessionId).status))conflict('STALE_SESSION','A closed connection cannot activate a restored branch.');
     if(this.branch(owner,op.branchId).revision!==op.branchRevision) conflict('STALE_REVISION','The branch changed during restoration.');
     op.status=input.status; a.status=input.status==='ready'?'active':'closed';
     if(input.status==='ready') { c.activeBranchId=op.branchId; c.activeEpoch=op.epoch; c.revision++; this.db.put('conversation',c.id,owner,c); }
-    this.db.put('attachment',a.sessionId,owner,a); this.db.put('restore',id,owner,op); return op;
+    this.db.put('attachment',a.sessionId,owner,a); this.db.put('restore',id,owner,op);
+    if(input.status==='failed')this.store.lifecycle(a.sessionId,{status:'error'});
+    return op;
   }
   attachment(owner:string,id:string) { return this.db.get<Attachment>('attachment',id,owner); }
   validateSnapshot(owner:string,id:string,revision:number,raw:unknown) {

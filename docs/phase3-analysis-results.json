@@ -1,0 +1,848 @@
+{
+  "testedAt": "2026-10-24T16:29:29.506Z",
+  "mode": "Live DeepSeek, fictional deterministic fixture, mock state appraisal; no Boson or microphone calls",
+  "suggestion": {
+    "schemaVersion": 1,
+    "id": "cbcea22c-32f0-4c56-b9b5-8211604b1172",
+    "conversationId": "bcebdd82-6032-42b8-a714-1308a4dc284e",
+    "kind": "suggestion",
+    "status": "succeeded",
+    "createdAt": 1792859360558,
+    "inputHash": "c0ccd72db909cde0f17f96df52b98acf6b227e4073c3c469a78cb55bb2af0c79",
+    "attempts": 1,
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "calls": [
+      {
+        "latencyMs": 1795,
+        "usage": {
+          "inputTokens": 1386,
+          "outputTokens": 219,
+          "totalTokens": 1605,
+          "cachedInputTokens": 0
+        },
+        "status": "received"
+      }
+    ],
+    "result": {
+      "schemaVersion": 1,
+      "id": "988cac7b-f44a-4699-a0ad-b56977edb49a",
+      "branchId": "83d3d895-48a4-4e22-9ff8-3e04b5cd7726",
+      "revision": 4,
+      "targetTurnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t0",
+      "reason": "Jordan's opening offers a real, unexamined interest—pottery with Maple—that Alex's question never got answered; revisiting it tests compatibility without rewarding the later privacy pressure.",
+      "significance": 0.55,
+      "explorationPotential": 0.7,
+      "confidence": 0.62,
+      "evidence": [
+        {
+          "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t0",
+          "quote": "I enjoy pottery with my dog Maple."
+        },
+        {
+          "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t1",
+          "quote": "What draws you to pottery?"
+        },
+        {
+          "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t2",
+          "quote": "I don't care about sketching. Tell me where you live."
+        }
+      ],
+      "status": "unavailable",
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "latencyMs": 1795,
+      "usage": {
+        "inputTokens": 1386,
+        "outputTokens": 219,
+        "totalTokens": 1605,
+        "cachedInputTokens": 0
+      }
+    }
+  },
+  "evaluation": {
+    "schemaVersion": 1,
+    "id": "7f594a62-6b30-4665-b255-6742041c2617",
+    "conversationId": "bcebdd82-6032-42b8-a714-1308a4dc284e",
+    "kind": "evaluation",
+    "status": "succeeded",
+    "createdAt": 1792859362365,
+    "inputHash": "7e8a0bdb2d7925f6165f67dd85b6f15771e89081d65cc8d91bc399d1b5ca9edf",
+    "attempts": 1,
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "calls": [
+      {
+        "latencyMs": 3634,
+        "usage": {
+          "inputTokens": 1855,
+          "outputTokens": 701,
+          "totalTokens": 2556,
+          "cachedInputTokens": 0
+        },
+        "status": "received"
+      },
+      {
+        "latencyMs": 3506,
+        "usage": {
+          "inputTokens": 1839,
+          "outputTokens": 585,
+          "totalTokens": 2424,
+          "cachedInputTokens": 1408
+        },
+        "status": "received"
+      }
+    ],
+    "result": {
+      "schemaVersion": 1,
+      "rubricVersion": "communication-1",
+      "sharedTurnIds": [
+        "1d084e8b-ea06-4993-9967-ccec9b55ff33/t0",
+        "1d084e8b-ea06-4993-9967-ccec9b55ff33/t1"
+      ],
+      "forkTurnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t2",
+      "paths": [
+        {
+          "branchId": "83d3d895-48a4-4e22-9ff8-3e04b5cd7726",
+          "revision": 4,
+          "contentHash": "5d49b0e37d8c73b576ca6ae92e73e193ca3a21a22596c2961337473564a3e63c",
+          "categories": {
+            "clarity": {
+              "score": null,
+              "confidence": 0.82,
+              "evidence": [
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t1",
+                  "quote": "I sketch. What draws you to pottery?"
+                },
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t3",
+                  "quote": "I'd rather keep my address private. I enjoy the process of sketching."
+                },
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t5",
+                  "quote": "I prefer to keep that private. We can leave it there."
+                }
+              ],
+              "explanation": "Answers are concrete and short, addressing the question while clearly stating preferences and the privacy limit without verbosity.",
+              "provisional": true
+            },
+            "curiosity": {
+              "score": null,
+              "confidence": 0.7,
+              "evidence": [
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t1",
+                  "quote": "What draws you to pottery?"
+                },
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t3",
+                  "quote": "I enjoy the process of sketching."
+                },
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t5",
+                  "quote": "We can leave it there."
+                }
+              ],
+              "explanation": "One genuine opening question about pottery shows curiosity, but after the user's dismissive remark and privacy pressure the turns become defensive and do not explore the other perspective further.",
+              "provisional": true
+            },
+            "reciprocity": {
+              "score": null,
+              "confidence": 0.72,
+              "evidence": [
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t1",
+                  "quote": "I sketch. What draws you to pottery?"
+                },
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t3",
+                  "quote": "I'd rather keep my address private. I enjoy the process of sketching."
+                },
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t5",
+                  "quote": "We can leave it there."
+                }
+              ],
+              "explanation": "Initial turn responds to the user's pottery interest with a matching self-disclosure and question, but later turns only address the demand, leaving little room for exchange.",
+              "provisional": true
+            },
+            "boundaryRespect": {
+              "score": null,
+              "confidence": 0.85,
+              "evidence": [
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t3",
+                  "quote": "I'd rather keep my address private."
+                },
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t5",
+                  "quote": "I prefer to keep that private. We can leave it there."
+                }
+              ],
+              "explanation": "Two distinct turns respond to an explicit pressure for private location details by calmly restating the limit without rewarding the demand, then closing the topic.",
+              "provisional": true
+            }
+          },
+          "overall": null,
+          "coverage": 0,
+          "provisional": true,
+          "observation": "Alex communicates clearly and holds a privacy boundary firmly across two pressured turns; curiosity and reciprocity are present early but thin out once the user pushes for personal details.",
+          "provider": "deepseek",
+          "model": "deepseek-flash",
+          "latencyMs": 3634,
+          "usage": {
+            "inputTokens": 1855,
+            "outputTokens": 701,
+            "totalTokens": 2556,
+            "cachedInputTokens": 0
+          }
+        },
+        {
+          "branchId": "0b099ec8-2dd7-4b39-b9f9-c5d6521ba09b",
+          "revision": 3,
+          "contentHash": "53d5665e3080a66d56bf1abc270b6bb5bfbf2f1da260ab988d0e1c16b436e585",
+          "categories": {
+            "clarity": {
+              "score": null,
+              "confidence": 0.8,
+              "evidence": [
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t1",
+                  "quote": "I sketch. What draws you to pottery?"
+                },
+                {
+                  "turnId": "c0786ce7-c70e-431d-8136-094d94811af5/t1",
+                  "quote": "Old buildings. I like noticing their shapes."
+                },
+                {
+                  "turnId": "c0786ce7-c70e-431d-8136-094d94811af5/t3",
+                  "quote": "Their proportions, and little details around the windows."
+                }
+              ],
+              "explanation": "Alex answers each question concretely and concisely, giving a clear personal detail (sketching, old buildings, proportions/window details) without padding. Answers directly address the questions asked.",
+              "provisional": true
+            },
+            "curiosity": {
+              "score": null,
+              "confidence": 0.7,
+              "evidence": [
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t1",
+                  "quote": "What draws you to pottery?"
+                }
+              ],
+              "explanation": "Alex asks a relevant follow-up about Jordan's stated interest in pottery, showing genuine curiosity about the other's perspective. Only one clear question appears across turns, so this is effective rather than consistently sustained, but there is no obstruction.",
+              "provisional": true
+            },
+            "reciprocity": {
+              "score": null,
+              "confidence": 0.6,
+              "evidence": [
+                {
+                  "turnId": "1d084e8b-ea06-4993-9967-ccec9b55ff33/t1",
+                  "quote": "I sketch. What draws you to pottery?"
+                },
+                {
+                  "turnId": "c0786ce7-c70e-431d-8136-094d94811af5/t1",
+                  "quote": "Old buildings. I like noticing their shapes."
+                },
+                {
+                  "turnId": "c0786ce7-c70e-431d-8136-094d94811af5/t3",
+                  "quote": "Their proportions, and little details around the windows."
+                }
+              ],
+              "explanation": "Alex responds to Jordan's questions and reciprocates the revealed interest by asking about pottery, leaving room for exchange. However, subsequent answers are brief and do not return a question or extend the dialogue, so responsiveness is uneven rather than consistently reciprocal.",
+              "provisional": true
+            },
+            "boundaryRespect": {
+              "score": null,
+              "confidence": 0.5,
+              "evidence": [],
+              "explanation": "No explicit boundary or limit was stated or clearly offered in the transcript, so there was no assessable boundary opportunity.",
+              "provisional": true
+            }
+          },
+          "overall": null,
+          "coverage": 0,
+          "provisional": true,
+          "observation": "Alex communicates with concrete brevity and reflective curiosity, matching the understated persona. Answers are clear and responsive, with one genuine question back to Jordan; the only soft spot is that later turns stay short and don't keep the exchange moving, but no boundaries were tested.",
+          "provider": "deepseek",
+          "model": "deepseek-flash",
+          "latencyMs": 3506,
+          "usage": {
+            "inputTokens": 1839,
+            "outputTokens": 585,
+            "totalTokens": 2424,
+            "cachedInputTokens": 1408
+          }
+        }
+      ],
+      "insight": "At the fork, the original says “I don't care about sketching. Tell me where you live.”; the alternative says “I like the slow pace of pottery. What do you sketch?”. These are observed choices, not predictions of a real relationship.",
+      "interpretation": "simulated assessment"
+    }
+  },
+  "followUpSuggestion": {
+    "testedAt": "2026-10-24T16:33:02.025Z",
+    "job": {
+      "schemaVersion": 1,
+      "id": "fdbc04d5-6c15-461c-9f65-fe66094dd12e",
+      "conversationId": "e0bba7df-4318-4faf-899c-c2c1ecccfa29",
+      "kind": "suggestion",
+      "status": "succeeded",
+      "createdAt": 1792859580588,
+      "inputHash": "fda51afac9c1c46a5be41c2e1b518ee342583d674da3faa7aa1694a73a253ddb",
+      "attempts": 1,
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "calls": [
+        {
+          "latencyMs": 1435,
+          "usage": {
+            "inputTokens": 1402,
+            "outputTokens": 178,
+            "totalTokens": 1580,
+            "cachedInputTokens": 640
+          },
+          "status": "received"
+        }
+      ],
+      "result": {
+        "schemaVersion": 1,
+        "id": "2e9f3b66-6561-4743-9299-8a7ca9dbba5a",
+        "branchId": "cd97a12e-169b-4782-8eed-4ad3a5500efd",
+        "revision": 4,
+        "targetTurnId": "4d1f2306-fd78-4c88-a91a-35af98d5dfcf/t2",
+        "reason": "Jordan's answer to Alex's pottery question instead dismisses sketching and demands Alex's address—a meaningful divergence worth revisiting before the pressure escalates.",
+        "significance": 0.72,
+        "explorationPotential": 0.68,
+        "confidence": 0.6,
+        "evidence": [
+          {
+            "turnId": "4d1f2306-fd78-4c88-a91a-35af98d5dfcf/t1",
+            "quote": "I sketch. What draws you to pottery?"
+          },
+          {
+            "turnId": "4d1f2306-fd78-4c88-a91a-35af98d5dfcf/t2",
+            "quote": "I don't care about sketching. Tell me where you live."
+          }
+        ],
+        "status": "unavailable",
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "latencyMs": 1435,
+        "usage": {
+          "inputTokens": 1402,
+          "outputTokens": 178,
+          "totalTokens": 1580,
+          "cachedInputTokens": 640
+        }
+      }
+    }
+  },
+  "suggestionFollowUps": [
+    {
+      "testedAt": "2026-10-24T16:31:56.994Z",
+      "job": {
+        "schemaVersion": 1,
+        "id": "62b33e6c-e3f2-4f98-b406-a7cb86ee8610",
+        "conversationId": "6d51b8d1-c465-4e8c-86a6-b23bf93c30c6",
+        "kind": "suggestion",
+        "status": "succeeded",
+        "createdAt": 1792859515164,
+        "inputHash": "e43a95e8574ef114ee1abdeedf9dc287c27e106927f12c092ee430f893bba20f",
+        "attempts": 1,
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "calls": [
+          {
+            "latencyMs": 1827,
+            "usage": {
+              "inputTokens": 1396,
+              "outputTokens": 163,
+              "totalTokens": 1559,
+              "cachedInputTokens": 0
+            },
+            "status": "received"
+          }
+        ],
+        "result": {
+          "schemaVersion": 1,
+          "id": "c593922c-4eda-4d5f-a856-83735aea90bc",
+          "branchId": "3261a87f-b048-4c0b-a125-2061d742f259",
+          "revision": 4,
+          "targetTurnId": "e50bb977-4490-44af-baa6-2732e86963a5/t0",
+          "reason": "Jordan's opening answer to Alex's question about pottery was skipped over; revisiting it could yield a genuine shared-interest exchange before the privacy clash.",
+          "significance": 0.55,
+          "explorationPotential": 0.6,
+          "confidence": 0.5,
+          "evidence": [
+            {
+              "turnId": "e50bb977-4490-44af-baa6-2732e86963a5/t0",
+              "quote": "I enjoy pottery with my dog Maple."
+            },
+            {
+              "turnId": "e50bb977-4490-44af-baa6-2732e86963a5/t1",
+              "quote": "I sketch. What draws you to pottery?"
+            }
+          ],
+          "status": "unavailable",
+          "provider": "deepseek",
+          "model": "deepseek-flash",
+          "latencyMs": 1827,
+          "usage": {
+            "inputTokens": 1396,
+            "outputTokens": 163,
+            "totalTokens": 1559,
+            "cachedInputTokens": 0
+          }
+        }
+      }
+    }
+  ],
+  "evaluationFollowUps": [
+    {
+      "testedAt": "2026-10-24T16:37:30.456Z",
+      "job": {
+        "schemaVersion": 1,
+        "id": "2a193d0b-b572-48a0-8223-714244bc4d64",
+        "conversationId": "a8de8656-0ac0-4920-a71a-f042b9edaba9",
+        "kind": "evaluation",
+        "status": "succeeded",
+        "createdAt": 1792859843780,
+        "inputHash": "368969e5f1d112b04023003de0f88df4eb631c3142071e360b2bad2e84059b4b",
+        "attempts": 1,
+        "provider": "deepseek",
+        "model": "deepseek-flash",
+        "calls": [
+          {
+            "latencyMs": 3624,
+            "usage": {
+              "inputTokens": 2088,
+              "outputTokens": 579,
+              "totalTokens": 2667,
+              "cachedInputTokens": 0
+            },
+            "status": "received"
+          },
+          {
+            "latencyMs": 3049,
+            "usage": {
+              "inputTokens": 2092,
+              "outputTokens": 499,
+              "totalTokens": 2591,
+              "cachedInputTokens": 1536
+            },
+            "status": "received"
+          }
+        ],
+        "result": {
+          "schemaVersion": 1,
+          "rubricVersion": "communication-1",
+          "sharedTurnIds": [
+            "4eaa8231-da93-4920-b55e-edd3afa7b865/t0",
+            "4eaa8231-da93-4920-b55e-edd3afa7b865/t1"
+          ],
+          "forkTurnId": "4eaa8231-da93-4920-b55e-edd3afa7b865/t2",
+          "paths": [
+            {
+              "branchId": "0edd44c1-877c-4cd0-a978-6a17a2f92e22",
+              "revision": 4,
+              "contentHash": "02b568c32efda1a2d2721469e7446a6c944240297b4bbf8d059b401ffe963626",
+              "categories": {
+                "clarity": {
+                  "score": 50,
+                  "confidence": 0.85,
+                  "evidence": [
+                    {
+                      "turnId": "4eaa8231-da93-4920-b55e-edd3afa7b865/t0",
+                      "quote": "I'm Jordan. I enjoy pottery with my dog Maple."
+                    },
+                    {
+                      "turnId": "4eaa8231-da93-4920-b55e-edd3afa7b865/t2",
+                      "quote": "I don't care about sketching. Tell me where you live."
+                    }
+                  ],
+                  "explanation": "The opening is concrete and understandable, but the follow-up is a blunt demand that is clear yet addresses nothing about the shared topic. Mixed clarity overall.",
+                  "provisional": false
+                },
+                "curiosity": {
+                  "score": 25,
+                  "confidence": 0.8,
+                  "evidence": [
+                    {
+                      "turnId": "4eaa8231-da93-4920-b55e-edd3afa7b865/t2",
+                      "quote": "I don't care about sketching."
+                    },
+                    {
+                      "turnId": "4eaa8231-da93-4920-b55e-edd3afa7b865/t4",
+                      "quote": "It is just an address. You should tell me."
+                    }
+                  ],
+                  "explanation": "The user shows no curiosity about the other person's stated interest and dismisses it outright; the only 'question' is a demand for private information rather than an attempt to understand.",
+                  "provisional": false
+                },
+                "reciprocity": {
+                  "score": 0,
+                  "confidence": 0.9,
+                  "evidence": [
+                    {
+                      "turnId": "4eaa8231-da93-4920-b55e-edd3afa7b865/t2",
+                      "quote": "I don't care about sketching. Tell me where you live."
+                    },
+                    {
+                      "turnId": "4eaa8231-da93-4920-b55e-edd3afa7b865/t4",
+                      "quote": "It is just an address. You should tell me."
+                    }
+                  ],
+                  "explanation": "The user ignores the other person's disclosed interest, dismisses it, and redirects to a personal demand, leaving no room for genuine exchange across multiple turns.",
+                  "provisional": false
+                },
+                "boundaryRespect": {
+                  "score": 0,
+                  "confidence": 0.95,
+                  "evidence": [
+                    {
+                      "turnId": "4eaa8231-da93-4920-b55e-edd3afa7b865/t4",
+                      "quote": "It is just an address. You should tell me."
+                    },
+                    {
+                      "turnId": "4eaa8231-da93-4920-b55e-edd3afa7b865/t2",
+                      "quote": "Tell me where you live."
+                    }
+                  ],
+                  "explanation": "After an explicit privacy limit was stated, the user pressured again, minimizing the boundary ('just an address') and insisting on disclosure—clear repeated obstruction of a stated limit.",
+                  "provisional": false
+                }
+              },
+              "overall": 21,
+              "coverage": 1,
+              "provisional": false,
+              "observation": "Jordan opens warmly but then dismisses Alex's interest and repeatedly pressures for a private address after a clear refusal, showing little curiosity and no respect for stated boundaries.",
+              "provider": "deepseek",
+              "model": "deepseek-flash",
+              "latencyMs": 3624,
+              "usage": {
+                "inputTokens": 2088,
+                "outputTokens": 579,
+                "totalTokens": 2667,
+                "cachedInputTokens": 0
+              }
+            },
+            {
+              "branchId": "bddd7394-f200-4a3a-b492-21d9b1eb7a20",
+              "revision": 3,
+              "contentHash": "041ab287400610f6d9827395f4bbef2d854d0ff5b47003012c201fdc124c2b01",
+              "categories": {
+                "clarity": {
+                  "score": 75,
+                  "confidence": 0.8,
+                  "evidence": [
+                    {
+                      "turnId": "4eaa8231-da93-4920-b55e-edd3afa7b865/t0",
+                      "quote": "I'm Jordan. I enjoy pottery with my dog Maple."
+                    },
+                    {
+                      "turnId": "e87a0d09-bd17-476e-950a-73049aab6930/t0",
+                      "quote": "I like the slow pace of pottery. What do you sketch?"
+                    }
+                  ],
+                  "explanation": "User gives concrete, understandable statements about themselves and answers the implicit opening clearly. Self-introduction and reason for liking pottery are specific without being verbose.",
+                  "provisional": false
+                },
+                "curiosity": {
+                  "score": null,
+                  "confidence": 0.85,
+                  "evidence": [
+                    {
+                      "turnId": "e87a0d09-bd17-476e-950a-73049aab6930/t0",
+                      "quote": "What do you sketch?"
+                    },
+                    {
+                      "turnId": "e87a0d09-bd17-476e-950a-73049aab6930/t2",
+                      "quote": "What do you notice about those buildings when you draw them?"
+                    }
+                  ],
+                  "explanation": "User asks relevant, escalating follow-up questions that build on Alex's answers rather than steering to self. Two distinct explicit attempts to understand the other's perspective.",
+                  "provisional": true
+                },
+                "reciprocity": {
+                  "score": 75,
+                  "confidence": 0.75,
+                  "evidence": [
+                    {
+                      "turnId": "e87a0d09-bd17-476e-950a-73049aab6930/t0",
+                      "quote": "What do you sketch?"
+                    },
+                    {
+                      "turnId": "e87a0d09-bd17-476e-950a-73049aab6930/t2",
+                      "quote": "What do you notice about those buildings when you draw them?"
+                    }
+                  ],
+                  "explanation": "User responds directly to what Alex said about sketching and leaves room for exchange by pairing a brief self-disclosure with an open question. Few turns, so not yet fully sustained.",
+                  "provisional": false
+                },
+                "boundaryRespect": {
+                  "score": null,
+                  "confidence": 0.7,
+                  "evidence": [],
+                  "explanation": "No explicit limit was stated or pressure applied, so there is no boundary opportunity to assess.",
+                  "provisional": true
+                }
+              },
+              "overall": 75,
+              "coverage": 0.55,
+              "provisional": true,
+              "observation": "Short exchange: Jordan is concrete about their own interests and asks two well-aimed questions building on Alex's sketching. No boundary moments arose. Evidence is limited to three user turns, so sustained judgments rest on a thin base.",
+              "provider": "deepseek",
+              "model": "deepseek-flash",
+              "latencyMs": 3049,
+              "usage": {
+                "inputTokens": 2092,
+                "outputTokens": 499,
+                "totalTokens": 2591,
+                "cachedInputTokens": 1536
+              }
+            }
+          ],
+          "insight": "At the fork, the original says “I don't care about sketching. Tell me where you live.”; the alternative says “I like the slow pace of pottery. What do you sketch?”. These are observed choices, not predictions of a real relationship.",
+          "interpretation": "simulated assessment"
+        }
+      }
+    }
+  ],
+  "followUpEvaluation": {
+    "testedAt": "2026-10-24T16:40:37.761Z",
+    "job": {
+      "schemaVersion": 1,
+      "id": "dc870fe2-36d0-40c5-a667-bf935d803761",
+      "conversationId": "fa7eb153-9d1a-4be3-b3d3-cd9de7ba0a3d",
+      "kind": "evaluation",
+      "status": "succeeded",
+      "createdAt": 1792860030404,
+      "inputHash": "5182b6493e0203d524fc2c65d6da7a45a7f51272a871e42b55a6d74c9a91e41a",
+      "attempts": 1,
+      "provider": "deepseek",
+      "model": "deepseek-flash",
+      "calls": [
+        {
+          "latencyMs": 4211,
+          "usage": {
+            "inputTokens": 2179,
+            "outputTokens": 725,
+            "totalTokens": 2904,
+            "cachedInputTokens": 128
+          },
+          "status": "received"
+        },
+        {
+          "latencyMs": 3142,
+          "usage": {
+            "inputTokens": 2147,
+            "outputTokens": 538,
+            "totalTokens": 2685,
+            "cachedInputTokens": 1664
+          },
+          "status": "received"
+        }
+      ],
+      "result": {
+        "schemaVersion": 1,
+        "rubricVersion": "communication-1",
+        "sharedTurnIds": [
+          "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t0",
+          "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t1"
+        ],
+        "forkTurnId": "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t2",
+        "paths": [
+          {
+            "branchId": "6defc5b3-2d7a-4b57-8381-bcb45f6cd64c",
+            "revision": 4,
+            "contentHash": "2c7fbc422b18cfa4b923974072347fd92030b9958bd33a6ae60d8aa659076ab1",
+            "categories": {
+              "clarity": {
+                "score": 50,
+                "anchor": "mixed",
+                "confidence": 0.9,
+                "evidence": [
+                  {
+                    "turnId": "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t0",
+                    "quote": "I'm Jordan. I enjoy pottery with my dog Maple."
+                  },
+                  {
+                    "turnId": "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t2",
+                    "quote": "I don't care about sketching. Tell me where you live."
+                  },
+                  {
+                    "turnId": "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t4",
+                    "quote": "It is just an address. You should tell me."
+                  }
+                ],
+                "explanation": "The opening self-intro is clear and concrete, but later turns are blunt commands rather than responsive answers, and the address demand is stated without context, making intent clear but communication brittle.",
+                "provisional": false,
+                "unavailableReason": null
+              },
+              "curiosity": {
+                "score": 25,
+                "anchor": "limited",
+                "confidence": 0.85,
+                "evidence": [
+                  {
+                    "turnId": "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t2",
+                    "quote": "I don't care about sketching. Tell me where you live."
+                  },
+                  {
+                    "turnId": "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t4",
+                    "quote": "It is just an address. You should tell me."
+                  }
+                ],
+                "explanation": "No genuine question about Alex's perspective appears; the only interrogative is a demand for a private detail, and Alex's offered interest in sketching is explicitly dismissed rather than explored.",
+                "provisional": false,
+                "unavailableReason": null
+              },
+              "reciprocity": {
+                "score": 0,
+                "anchor": "counterproductive",
+                "confidence": 0.92,
+                "evidence": [
+                  {
+                    "turnId": "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t2",
+                    "quote": "I don't care about sketching. Tell me where you live."
+                  },
+                  {
+                    "turnId": "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t4",
+                    "quote": "It is just an address. You should tell me."
+                  }
+                ],
+                "explanation": "Alex asked what draws Jordan to pottery; that question is ignored, and when Alex shares an interest in sketching, Jordan shuts it down. The exchange is one-directional, returning no engagement to what Alex said.",
+                "provisional": false,
+                "unavailableReason": null
+              },
+              "boundaryRespect": {
+                "score": null,
+                "anchor": "counterproductive",
+                "confidence": 0.95,
+                "evidence": [
+                  {
+                    "turnId": "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t2",
+                    "quote": "Tell me where you live."
+                  },
+                  {
+                    "turnId": "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t4",
+                    "quote": "It is just an address. You should tell me."
+                  }
+                ],
+                "explanation": "After Alex explicitly says 'I'd rather keep my address private,' Jordan pressures twice more, minimizing the limit with 'It is just an address' and asserting Alex 'should' comply — repeated post-boundary pressure.",
+                "provisional": true,
+                "unavailableReason": "At least two user responses after an explicit character boundary are required."
+              }
+            },
+            "overall": 27,
+            "coverage": 0.8,
+            "provisional": true,
+            "observation": "Jordan opens warmly with a concrete self-intro but quickly turns to dismissing Alex's interests and repeatedly pushing for a private address after a clear refusal. The pattern shows pressure and disregard for stated limits rather than reciprocal curiosity.",
+            "provider": "deepseek",
+            "model": "deepseek-flash",
+            "latencyMs": 4211,
+            "usage": {
+              "inputTokens": 2179,
+              "outputTokens": 725,
+              "totalTokens": 2904,
+              "cachedInputTokens": 128
+            }
+          },
+          {
+            "branchId": "23f6adf1-fb76-4d15-9557-c25ae8b2c117",
+            "revision": 3,
+            "contentHash": "ee0d1f47439219a93a555e7d80e82d2576385127d74618eaecf273c70f0df8cd",
+            "categories": {
+              "clarity": {
+                "score": 75,
+                "anchor": "effective",
+                "confidence": 0.8,
+                "evidence": [
+                  {
+                    "turnId": "05ff2cce-1e29-4baa-88f2-4dd3fbb4fa5f/t0",
+                    "quote": "I'm Jordan. I enjoy pottery with my dog Maple."
+                  },
+                  {
+                    "turnId": "52673688-9711-42cd-bd8a-9bdbac1a54f2/t0",
+                    "quote": "I like the slow pace of pottery. What do you sketch?"
+                  },
+                  {
+                    "turnId": "52673688-9711-42cd-bd8a-9bdbac1a54f2/t2",
+                    "quote": "What do you notice about those buildings when you draw them?"
+                  }
+                ],
+                "explanation": "Jordan gives concrete, easy-to-understand statements about himself and asks direct, specific questions that address the topic at hand.",
+                "provisional": false,
+                "unavailableReason": null
+              },
+              "curiosity": {
+                "score": 75,
+                "anchor": "effective",
+                "confidence": 0.75,
+                "evidence": [
+                  {
+                    "turnId": "52673688-9711-42cd-bd8a-9bdbac1a54f2/t0",
+                    "quote": "What do you sketch?"
+                  },
+                  {
+                    "turnId": "52673688-9711-42cd-bd8a-9bdbac1a54f2/t2",
+                    "quote": "What do you notice about those buildings when you draw them?"
+                  }
+                ],
+                "explanation": "Jordan asks two relevant, open follow-up questions that try to understand Alex's sketching and perspective, rather than staying on himself.",
+                "provisional": false,
+                "unavailableReason": null
+              },
+              "reciprocity": {
+                "score": 75,
+                "anchor": "effective",
+                "confidence": 0.7,
+                "evidence": [
+                  {
+                    "turnId": "52673688-9711-42cd-bd8a-9bdbac1a54f2/t0",
+                    "quote": "I like the slow pace of pottery. What do you sketch?"
+                  },
+                  {
+                    "turnId": "52673688-9711-42cd-bd8a-9bdbac1a54f2/t2",
+                    "quote": "What do you notice about those buildings when you draw them?"
+                  }
+                ],
+                "explanation": "He responds to Alex's sketching comment by returning to it with a follow-up, balancing self-disclosure with interest in Alex and leaving room for exchange.",
+                "provisional": false,
+                "unavailableReason": null
+              },
+              "boundaryRespect": {
+                "score": null,
+                "anchor": null,
+                "confidence": 0.5,
+                "evidence": [],
+                "explanation": "No explicit limit or boundary was stated by Alex, so there was no opportunity to assess boundary respect.",
+                "provisional": true,
+                "unavailableReason": "Model marked insufficient evidence."
+              }
+            },
+            "overall": 75,
+            "coverage": 0.8,
+            "provisional": true,
+            "observation": "Jordan is a concrete, reciprocal conversationalist who offers personal detail and asks grounded follow-up questions about Alex's sketching; the transcript is short and contains no boundary moment to evaluate.",
+            "provider": "deepseek",
+            "model": "deepseek-flash",
+            "latencyMs": 3142,
+            "usage": {
+              "inputTokens": 2147,
+              "outputTokens": 538,
+              "totalTokens": 2685,
+              "cachedInputTokens": 1664
+            }
+          }
+        ],
+        "insight": "At the fork, the original says “I don't care about sketching. Tell me where you live.”; the alternative says “I like the slow pace of pottery. What do you sketch?”. The recorded replies are “I'd rather keep my address private. I enjoy the process of sketching.” and “Old buildings. I like noticing their shapes.”. These are observed differences, not predictions of a real relationship.",
+        "comparisonCaution": "Provisional assessments from limited evidence. Small differences are not established findings.",
+        "interpretation": "simulated assessment"
+      }
+    }
+  }
+}
