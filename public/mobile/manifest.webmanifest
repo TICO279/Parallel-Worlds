@@ -1,0 +1,9 @@
+{
+  "name": "Ember",
+  "short_name": "Ember",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ff4b68",
+  "theme_color": "#ff4b68"
+}

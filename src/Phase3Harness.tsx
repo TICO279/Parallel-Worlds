@@ -102,7 +102,7 @@ export function Phase3Harness(){
     const child=await sdk.fork(fresh.conversation.id,source.id,preview.id,source.revision);select(child.id);await refresh(fresh.conversation.id,child.id);}
   const result=job?.status==='succeeded'&&job.kind==='evaluation'?job.result as ComparisonResult:null;
   return <main className="phase3-harness">
-    <header><a href="/">← Existing conversation lab</a><span>PHASE 3 · INTEGRATION HARNESS</span></header>
+    <header><a href="/lab">← Existing conversation lab</a><span>PHASE 3 · INTEGRATION HARNESS</span></header>
     <h1>One choice. Two paths.</h1><p>Alex · backend-owned history. The product frontend is developed separately.</p>
     {error&&<p role="alert" className="notice error">{error}</p>}{warning&&<p role="status" className="notice">{warning}</p>}
     <p className="notice">Context gate: {qualification?.contextQualified?'live text checks passed':'not qualified; saved-path reconnection is blocked'}. Physical microphone rewind: {qualification?.physicalMicrophoneTested?'tested':'not verified'}.</p>

@@ -1,0 +1,63 @@
+{
+  "sourceRef": "origin/main2",
+  "sourceCommit": "3781fed7213e8042c77f90ee61e7f8ca95a55813",
+  "photoAssets": [
+    {
+      "sourcePath": "dating/photos/alex.jpg",
+      "targetPath": "public/mobile/photos/alex.jpg",
+      "sha256": "f13450eb298abbec1042dc70d113e4b2785cdc07a950c8f1a9e4c0154db8ff09"
+    },
+    {
+      "sourcePath": "dating/photos/amara.jpg",
+      "targetPath": "public/mobile/photos/amara.jpg",
+      "sha256": "0fde8399b37c269af74fffcea49648fccf8386932ea4353b301dcf9077e7a8f2"
+    },
+    {
+      "sourcePath": "dating/photos/devin.jpg",
+      "targetPath": "public/mobile/photos/devin.jpg",
+      "sha256": "b07c724fbc62b78cc66accf7e0ed2ab8867945f9ba3e08b850297f5cbce2158e"
+    },
+    {
+      "sourcePath": "dating/photos/elena.jpg",
+      "targetPath": "public/mobile/photos/elena.jpg",
+      "sha256": "28a21309a703e41ecb5161a3f0187e92171c8cce01ad45cb2a05a6a2a0fb9732"
+    },
+    {
+      "sourcePath": "dating/photos/jordan.jpg",
+      "targetPath": "public/mobile/photos/jordan.jpg",
+      "sha256": "2019bcc76fc0fb45683c1ecd0b3b3b196873011ee726e5cee1431c4ee4771ecf"
+    },
+    {
+      "sourcePath": "dating/photos/leo.jpg",
+      "targetPath": "public/mobile/photos/leo.jpg",
+      "sha256": "23970616feca8f056a0abe9ccc70feb7d8d6481d30099bf20ff589bb15ab1dd3"
+    },
+    {
+      "sourcePath": "dating/photos/maya.jpg",
+      "targetPath": "public/mobile/photos/maya.jpg",
+      "sha256": "71b13781203b720965042e56601df0e2c91675697366365d1be05bed4748a8bf"
+    },
+    {
+      "sourcePath": "dating/photos/sofia.jpg",
+      "targetPath": "public/mobile/photos/sofia.jpg",
+      "sha256": "8548aa774ab1718dc542fdc912ad71af88551fdc57dac820fcb49deb4349fb0b"
+    }
+  ],
+  "inlineLogos": [
+    {
+      "name": "Ember flame",
+      "sourcePath": "dating/app.js",
+      "note": "Original path data retained in Flame() in views.tsx"
+    },
+    {
+      "name": "Parallel Worlds rings",
+      "sourcePath": "src/PhoneDate.tsx",
+      "note": "Original two-circle viewBox retained in Rings() in views.tsx"
+    }
+  ],
+  "styles": [
+    "dating/styles.css",
+    "src/phone.css"
+  ],
+  "scope": "Presentation only; no competing backend, dynamic profile builder, audio adapter or configuration imported."
+}

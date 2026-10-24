@@ -4,13 +4,25 @@ A local voice-conversation lab powered by Boson Higgs Realtime. Phase 1 includes
 Alex's first date and Morgan's mock interview, microphone streaming, server VAD,
 interruptions, ordered transcripts, and JSON export.
 
-**Phase 3 hackathon MVP (feature branch):** durable SQLite conversations, an original
+**Mobile frontend integration:** `/` now opens the Ember dating interface imported
+selectively from `origin/main2`, with **Alex only**. Open Alex's profile, choose
+**Parallel Worlds**, then tap the microphone to connect and speak first. Saved dates,
+the timeline, suggested rewind, Undo and Evaluate use the existing Phase 3 API. Only
+the original and one alternative are shown. The existing conversation lab remains at
+`/lab` (also `/?lab`), and the Phase 3 test harness remains at `/phase3`.
+See the [integration and verification guide](docs/mobile-frontend-integration.md).
+**309 tests pass**, with type checking and production build passing. The voice journey
+is covered with synthetic events against the real local API/SQLite; live Boson setup
+reached ready, but microphone capture failed in this browser. Actual spoken conversation
+and physical-device audio verification remain pending.
+
+**Phase 3 hackathon MVP:** durable SQLite conversations, an original
 and one independent alternative, gated context restoration, asynchronous DeepSeek/mock
 suggestions, conservative communication evaluation, and a small two-path test harness
-at **[/phase3](http://127.0.0.1:5173/phase3)**. The separate mobile frontend consumes the
-[documented API and reusable TypeScript client](docs/phase3-api.md); this branch does
-not redesign that frontend. See [usage and scope](docs/phase3-mvp.md) and the
-[verification report](docs/phase3-verification.md). **266 tests pass**. Live Boson checks
+at **[/phase3](http://127.0.0.1:5173/phase3)**. The mobile frontend consumes the
+[documented API and reusable TypeScript client](docs/phase3-api.md). See
+[usage and scope](docs/phase3-mvp.md) and the [Phase 3 verification report](docs/phase3-verification.md).
+The Phase 3 baseline had **266 passing tests**. Live Boson checks
 cover text/generated-audio context restoration; DeepSeek checks cover suggestions and
 evidence-based assessments. Physical microphone rewind remains unverified.
 
@@ -64,7 +76,9 @@ Copy-Item .env.example .env
 pnpm dev
 ```
 
-Open **http://127.0.0.1:5173/**. Choose a scenario, click **Start conversation**,
+Open **http://127.0.0.1:5173/** for the mobile interface described above.
+The following lab controls remain at **http://127.0.0.1:5173/lab**:
+choose a scenario, click **Start conversation**,
 then type a message, or **Enable microphone** and say hello. Typing is available while
 the microphone is off. Allow microphone access in your browser. The user speaks first. Headphones improve interruption behavior.
 
