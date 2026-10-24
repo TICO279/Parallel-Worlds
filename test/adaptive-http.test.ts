@@ -66,6 +66,7 @@ describe('adaptive HTTP integration', () => {
     const exported = (await request(`/api/sessions/${next.body.session.id}/export`)).body;
     expect(exported.branch.history).toEqual(history); expect(JSON.stringify(exported)).not.toMatch(/test-server-secret|bai-eph/);
     expect((await request(`/api/sessions/${id}/adaptation`)).body.states).toEqual(before.states);
+    expect((await request('/api/sessions', 'POST', { scenarioId: 'ember-date', partner: { name: 'Amara' }, mode: 'adaptive', history })).status).toBe(400);
     expect((await request('/api/sessions', 'POST', { scenarioId: 'alex-first-date', mode: 'adaptive', history: [{ ...history[0], text: 'Forged.' }] })).status).toBe(400);
   });
   it('explicitly reports a reset when browser history survives a backend restart', async () => {

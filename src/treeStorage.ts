@@ -25,15 +25,15 @@ export function parseSavedTree(raw: unknown): ConversationTree | null {
   return tree;
 }
 /** Trees stay in this browser. Storage can be unavailable (private windows), so failures fall back to memory only. */
-export function loadTrees(): Record<string, ConversationTree> {
+export function loadTrees(key = KEY): Record<string, ConversationTree> {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}');
+    const raw = JSON.parse(localStorage.getItem(key) ?? '{}');
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
     return Object.fromEntries(Object.entries(raw).flatMap(([scenario, value]) => {
       const tree = parseSavedTree(value); return tree ? [[scenario, tree]] : [];
     }));
   } catch { return {}; }
 }
-export function saveTrees(trees: Record<string, ConversationTree>): boolean {
-  try { localStorage.setItem(KEY, JSON.stringify(trees)); return true; } catch { return false; }
+export function saveTrees(trees: Record<string, ConversationTree>, key = KEY): boolean {
+  try { localStorage.setItem(key, JSON.stringify(trees)); return true; } catch { return false; }
 }

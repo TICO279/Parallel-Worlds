@@ -31,6 +31,7 @@ export class ConversationStore {
   private sessions = new Map<string, StoredSession>();
   private notified = new Set<string>();
   private listeners: CompletedTurnListener[] = [];
+  private scenarios = new Map<string, Scenario>();
   constructor(private completed?: CompletedTurnListener) {}
   subscribe(listener: CompletedTurnListener) { this.listeners.push(listener); }
   setBranch(id: string, branch: BranchContext) {
@@ -46,8 +47,17 @@ export class ConversationStore {
   create(scenario: Scenario): StoredSession {
     const now = Date.now(); const s: StoredSession = { schemaVersion: 1, id: randomUUID(), scenarioId: scenario.id,
       characterId: scenario.character.id, status: 'connecting', createdAt: now, updatedAt: now, revision: 0, turns: [] };
-    this.sessions.set(s.id, s); return structuredClone(s);
+    this.sessions.set(s.id, s); this.scenarios.set(s.id, structuredClone(scenario)); return structuredClone(s);
   }
+  /** The scenario a session was created with (Ember partners are not in the fixed list). */
+  scenario(id: string): Scenario | undefined { const s = this.scenarios.get(id); return s && structuredClone(s); }
+  /** The newest definition of a scenario that only exists through its sessions (an Ember partner). */
+  latestScenario(scenarioId: string): Scenario | undefined {
+    const newest = this.list().filter(s => s.scenarioId === scenarioId).at(-1);
+    return newest && this.scenario(newest.id);
+  }
+  /** Every session, oldest first. */
+  list(): StoredSession[] { return [...this.sessions.values()].sort((a, b) => a.createdAt - b.createdAt).map(s => structuredClone(s)); }
   get(id: string): StoredSession {
     const s = this.sessions.get(id); if (!s) throw new ApiError(404, 'Session not found. The backend may have restarted.');
     return structuredClone(s);

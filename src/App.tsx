@@ -1,15 +1,17 @@
 import { APP_VERSION } from './version';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Conversation, ConversationTree, ProtocolEvent, Scenario, SessionBootstrap, StoredSession, TreeNode } from '../shared/domain';
+import { isPartnerScenario } from '../shared/partner';
 import { emptyConversation, orderedTurns, reduceTranscript } from '../shared/transcript';
-import { attachStates, branchHistory, checkpointAt, childMap, emptyTree, isSeedEcho, pathTo, revertTo, seedEvents, syncSession } from '../shared/tree';
+import { attachStates, branchHistory, checkpointAt, childMap, emptyTree, isSeedEcho, pathTo, revertTo, seedEvents, syncSession, treeFromSessions } from '../shared/tree';
 import { HiggsClient, type Activity, type ConnectionState } from './realtime/HiggsClient';
 import { api, SessionRecorder } from './recording';
 import { AdaptivePanel } from './AdaptivePanel';
-import type { AdaptationData, JudgeResult, LatencyRecord } from '../shared/characterState';
+import type { AdaptationData, LatencyRecord } from '../shared/characterState';
 import { loadTrees, saveTrees } from './treeStorage';
 import { TreeView } from './TreeView';
 import { pollAdaptation } from './adaptationPolling';
+import { turnPipeline } from './turnPipeline';
 const lineText = (n: TreeNode) => n.text || (n.transcriptionFailed ? '[Transcription unavailable]'
   : n.role === 'user' && n.status !== 'incomplete' ? 'Transcribing…' : n.status === 'incomplete' ? '[Turn unfinished]' : '…');
 export function App() {
@@ -33,6 +35,8 @@ export function App() {
   const client = useRef<HiggsClient | null>(null); const state = useRef<Conversation>(emptyConversation());
   const recorder = useRef<SessionRecorder | null>(null); const recorders = useRef<SessionRecorder[]>([]);
   const transcriptEnd = useRef<HTMLDivElement>(null);
+  // First dates started from Ember on the phone, as the server recorded them.
+  const [ember, setEmber] = useState<{ scenario: Scenario; sessions: StoredSession[] }[]>([]);
   useEffect(() => {
     let mounted = true;
     void Promise.all([api<Scenario[]>('/api/scenarios'), api<{ credentialsConfigured: boolean }>('/api/health')])
@@ -46,27 +50,7 @@ export function App() {
           history: branchHistory(pathTo(treesRef.current[selectedRef.current] ?? emptyTree(), live.current?.baseId ?? null)) }) });
       },
       seed: () => seeds.current,
-      pipeline: {
-        judge: async (turnId, signal) => {
-          const id = sessionIdRef.current; const r = recorder.current; if (!id || !r) throw new Error('No session.');
-          // The server judges the recorded line, so the transcript must reach it first.
-          for (let attempt = 0; ; attempt++) {
-            await synced(r, signal);
-            try { return await api<JudgeResult>(`/api/sessions/${id}/judge`, { method: 'POST', signal, body: JSON.stringify({ turnId }) }); }
-            catch (e) { if (signal.aborted || attempt >= 8) throw e; await sleep(150, signal); }
-          }
-        },
-        speak: async ({ itemId, text, userItemId, discardedDraft }, signal) => {
-          const id = sessionIdRef.current; if (!id) throw new Error('No session.');
-          const response = await fetch(`/api/sessions/${id}/speech`, { method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ replyItemId: itemId, text, ...(userItemId && { userItemId }), ...(discardedDraft !== undefined && { discardedDraft }) }) });
-          if (!response.ok || !response.body) {
-            const data = await response.json().catch(() => ({}));
-            throw new Error(typeof data.error === 'string' ? data.error : 'Text-to-speech failed.');
-          }
-          return chunks(response.body);
-        },
-      },
+      pipeline: turnPipeline(() => ({ id: sessionIdRef.current, recorder: recorder.current })),
       onBootstrap: data => {
         state.current = emptyConversation(); setSession(data.session);
         if (live.current) live.current.sessionId = data.session.id;
@@ -130,10 +114,19 @@ export function App() {
       keepPolling: data => connection !== 'closed' || Boolean(data?.pending) || !recorder.current?.synced,
     });
   }, [session?.id, connection]);
+  // The phone records its dates on the server; refresh them whenever the lab comes back into view.
+  useEffect(() => {
+    const load = () => void api<{ scenario: Scenario; sessions: StoredSession[] }[]>('/api/ember/dates').then(dates => {
+      setEmber(dates);
+      setTrees(t => ({ ...t, ...Object.fromEntries(dates.map(d => [d.scenario.id, treeFromSessions(d.sessions)])) }));
+    }).catch(() => {});
+    load(); window.addEventListener('focus', load); return () => window.removeEventListener('focus', load);
+  }, []);
   useEffect(() => { const timer = setTimeout(() => setStorageWarning(saveTrees(trees) ? null : 'Browser storage is unavailable or full. Export JSON to keep this conversation tree.'), 400); return () => clearTimeout(timer); }, [trees]);
   const tree = trees[selected] ?? emptyTree(); const path = pathTo(tree, tree.headId);
   useEffect(() => { if (path.length) transcriptEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [trees]);
-  const scenario = scenarios.find(s => s.id === selected); const sessionScenario = scenarios.find(s => s.id === session?.scenarioId) ?? scenario;
+  const dates = [...scenarios, ...ember.map(d => d.scenario)];
+  const scenario = dates.find(s => s.id === selected); const sessionScenario = dates.find(s => s.id === session?.scenarioId) ?? scenario;
   const busy = connection === 'connecting' || connection === 'ready' || connection === 'closing';
   // HEAD has children only after a revert: the next session starts a sibling branch.
   const atFork = !busy && (childMap(tree).get(tree.headId)?.length ?? 0) > 0;
@@ -189,10 +182,10 @@ export function App() {
     <aside className="sidebar">
       <a className="brand" href="/" aria-label="Parallel Worlds home"><span className="brand-symbol">◒</span><span>parallel<br/>worlds<span className="brand-period">.</span></span></a>
       <div className="sidebar-intro"><span className="eyebrow">THE CONVERSATION LAB</span><p>A different connection.<br/>A world of possibility.</p></div>
-      <div className="scenario-label"><span className="eyebrow">CHOOSE YOUR DATE</span><span>01 — {String(scenarios.length).padStart(2, '0')}</span></div>
-      <nav aria-label="Scenarios" className="scenario-list">{scenarios.map((s, i) => <button key={s.id} disabled={busy} aria-pressed={selected === s.id}
+      <div className="scenario-label"><span className="eyebrow">CHOOSE YOUR DATE</span><span>01 — {String(dates.length).padStart(2, '0')}</span></div>
+      <nav aria-label="Scenarios" className="scenario-list">{dates.map((s, i) => <button key={s.id} disabled={busy} aria-pressed={selected === s.id}
         className={`scenario-option ${selected === s.id ? 'selected' : ''}`} onClick={() => { setSelected(s.id); setSelectedLine(null); }}>
-        <span className="scenario-number">0{i + 1}</span><span><strong>{s.title}</strong><small>Connection & curiosity</small></span><span className="option-arrow">↗</span>
+        <span className="scenario-number">0{i + 1}</span><span><strong>{s.title}</strong><small>{isPartnerScenario(s.id) ? 'Met on Ember' : 'Connection & curiosity'}</small></span><span className="option-arrow">↗</span>
       </button>)}</nav>
       <div className="sidebar-note"><span className="small-orbit">✳</span><p>Every conversation starts<br/>with being present.</p></div>
       <footer className="sidebar-footer"><span className="status-dot"/> <span className="app-version">{APP_VERSION}</span> <span>ADAPTIVE CHARACTERS</span></footer>
@@ -205,7 +198,7 @@ export function App() {
         {error && <div role="alert" className="notice error"><span>{error}</span><button className="text-button" onClick={() => setError(null)} aria-label="Dismiss error">×</button></div>}
         <div className="conversation-grid">
           <section className="character-card" aria-labelledby="character-title">
-            <div className="card-top"><span className="eyebrow">A CHANCE TO CONNECT</span><span className="card-index">{String(scenarios.findIndex(s => s.id === selected) + 1).padStart(2, '0')}</span></div>
+            <div className="card-top"><span className="eyebrow">A CHANCE TO CONNECT</span><span className="card-index">{String(dates.findIndex(s => s.id === selected) + 1).padStart(2, '0')}</span></div>
             <div className={`character-art ${activity === 'speaking' ? 'speaking' : ''}`} aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="character-monogram">{scenario?.character.name[0] ?? 'A'}<span>✳</span></div><span className="art-caption">A VOICE. A PERSPECTIVE. A POSSIBILITY.</span></div>
             <div className="character-copy"><span className="eyebrow">MEET YOUR CONVERSATION PARTNER</span><h2 id="character-title">{scenario?.character.name ?? 'Alex'}</h2><p>{scenario?.character.description ?? 'Loading scenarios…'}</p><div className="traits">{scenario?.character.traits.slice(0, 3).map(t => <span key={t}>{t}</span>)}</div></div>
             <div className="setting"><span>THE SETTING</span><p>{scenario?.setting}</p></div>
@@ -257,16 +250,4 @@ export function App() {
       </div>
     </main>
   </div>;
-}
-const sleep = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
-  const timer = setTimeout(resolve, ms); signal.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason); }, { once: true });
-});
-async function synced(recorder: SessionRecorder, signal: AbortSignal) {
-  while (!recorder.synced) { signal.throwIfAborted(); await recorder.flush(); if (!recorder.synced) await sleep(100, signal); }
-}
-/** ReadableStream → async iterable without relying on browser support for `for await` over streams. */
-async function* chunks(body: ReadableStream<Uint8Array>) {
-  const reader = body.getReader();
-  try { for (;;) { const { done, value } = await reader.read(); if (done) return; if (value) yield value; } }
-  finally { reader.releaseLock(); }
 }

@@ -30,6 +30,8 @@ export interface ClientOptions {
   judgeTimeoutMs?: number;
   /** History to replay after the session is acknowledged and before any microphone audio. */
   seed?: () => ProtocolEvent[];
+  /** Asked once the session is ready: true when the character speaks first (an outgoing date with nothing said yet). */
+  opens?: () => boolean;
   onApplication?: (version: number, status: 'acknowledged' | 'failed' | 'deferred' | 'dispatched') => void;
   onLatency?: (metric: LatencyRecord) => void;
   socketFactory?: (url: string, protocols: string[]) => WebSocket;
@@ -168,6 +170,7 @@ export class HiggsClient {
           clearTimeout(this.timeout);
           for (const item of this.options.seed?.() ?? []) this.send(item);
           this.setState('ready');
+          if (this.options.opens?.()) this.open();
         } else if (event.type === 'session.updated' && t?.stage === 'updating') {
           // The post-appraisal instructions are now active: ask Higgs to draft again.
           this.sessionInstructions = t.instructions;
@@ -344,6 +347,12 @@ export class HiggsClient {
       if (this.turn === t) this.endTurn();
       if (gen === this.gen) { this.options.onActivity(this.idleActivity()); this.applyWhenIdle(); }
     }
+  }
+  /** Her opening line before anyone has spoken: drafted and voiced like a reply, with no user line to judge. */
+  private open() {
+    this.userEpoch++;
+    this.turn = { epoch: this.userEpoch, verdict: 'ordinary', stage: 'drafting' };
+    this.awaitingResponse = true; this.send({ type: 'response.create' }); this.options.onActivity('thinking');
   }
   /** A reply nobody heard must not stay in Higgs's history. */
   private discard(itemId: string) {

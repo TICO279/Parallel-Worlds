@@ -136,6 +136,20 @@ describe('Higgs adapter: one turn = Jev judgment + Higgs text draft + TTS', () =
     expect(h.socket.sent.some(e => e.type === 'response.cancel' || e.type === 'conversation.item.delete')).toBe(false);
     await h.client.disconnect();
   });
+  it('lets an outgoing character open: drafts after the replayed history and speaks without judging', async () => {
+    const h = harness({ opens: () => true, seed: () => [{ type: 'conversation.item.create', item: { id: 'pwseed_0' } }] }); await ready(h);
+    expect(h.socket.sent.map(e => e.type)).toEqual(['session.update', 'conversation.item.create', 'response.create']);
+    draft(h, 'r1', 'a1', 'Hi! So you host dinners?');
+    await vi.waitFor(() => expect(h.pipeline.speak).toHaveBeenCalledWith({ itemId: 'a1', text: 'Hi! So you host dinners?' }, expect.any(AbortSignal)));
+    expect(h.pipeline.judge).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(h.opts.onEvent).toHaveBeenCalledWith({ type: 'client.reply', item_id: 'a1', text: 'Hi! So you host dinners?' }));
+    await h.client.disconnect();
+  });
+  it('waits for the user when the character does not open', async () => {
+    const h = harness({ opens: () => false }); await ready(h);
+    expect(h.socket.sent.map(e => e.type)).toEqual(['session.update']);
+    await h.client.disconnect();
+  });
   it('does not show a reply before its voice starts', async () => {
     let release!: () => void;
     const h = harness(); h.pipeline.speak.mockImplementation(async () => (async function* () { await new Promise<void>(r => { release = r; }); yield new Uint8Array([1, 2]); })());

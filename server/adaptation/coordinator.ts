@@ -34,7 +34,8 @@ export class AdaptationCoordinator {
     // In major-shift mode the full appraisal only runs when judgeTurn() asks for it.
     if (config.appraisalTrigger !== 'major_shift') store.subscribe((id, turn) => { if (turn.role === 'user') void this.enqueue(id); });
   }
-  private scenarioOf(id: string) { const session = this.store.get(id); return this.scenarios.find(s => s.id === session.scenarioId)!; }
+  // Ember dates build their character per profile, so the store's copy wins over the fixed list.
+  private scenarioOf(id: string) { const session = this.store.get(id); return this.store.scenario(id) ?? this.scenarios.find(s => s.id === session.scenarioId)!; }
   /** Completed lines of this trajectory (replayed branch + live session) before `beforeOrder`, up to the context cap. */
   private trajectory(id: string, beforeOrder = Infinity) {
     const session = this.store.get(id);
@@ -42,7 +43,7 @@ export class AdaptationCoordinator {
       .map(t => ({ role: t.role, text: t.text }));
   }
   initialize(id: string, mode: 'static' | 'adaptive', restored?: DynamicCharacterState) {
-    const session = this.store.get(id); const scenario = this.scenarios.find(s => s.id === session.scenarioId)!;
+    const session = this.store.get(id); const scenario = this.scenarioOf(id);
     const base = { ...initialState(scenario.character, id, Date.now()), relationship: restored?.relationship ?? initialRelationship(scenario.character) };
     const state = restored ? { ...base, comfort: restored.comfort, trust: restored.trust, curiosity: restored.curiosity,
       engagement: restored.engagement, tone: restored.tone, goal: restored.goal, guidance: restored.guidance,
@@ -67,7 +68,7 @@ export class AdaptationCoordinator {
   current(id: string): DynamicCharacterState { return this.get(id).states.at(-1)!; }
   stateAtTurn(id: string, turnId: string) { return this.get(id).states.find(s => s.lastProcessedTurnId === turnId); }
   instructions(id: string) {
-    const session = this.store.get(id); const scenario = this.scenarios.find(s => s.id === session.scenarioId)!;
+    const session = this.store.get(id); const scenario = this.scenarioOf(id);
     const state = this.current(id);
     const context = appraisalContext([...branchTurns(session.branch?.history), ...session.turns], state.lastProcessedOrder + 1);
     // Automatic replies may already exist: never dispatch an acknowledgement of a past utterance.
@@ -225,7 +226,7 @@ export class AdaptationCoordinator {
         data.attempts.push({ turnId: turn.itemId, baseVersion: previous.version, provider: this.provider.name, status: 'stale', latencyMs: 0, at: Date.now(), error: 'Turn precedes the committed state.' });
         this.store.setAdaptation(id, data); continue;
       }
-      const scenario = this.scenarios.find(s => s.id === session.scenarioId)!;
+      const scenario = this.scenarioOf(id);
       const controller = new AbortController(); this.controllers.set(id, controller);
       const started = performance.now(); data.pending = true; this.store.setAdaptation(id, data);
       let timer: ReturnType<typeof setTimeout> | undefined;

@@ -12,6 +12,8 @@ import { openSpeech } from './speech';
 import { log } from './log';
 import { z } from 'zod';
 import { prepareBranch } from './branching';
+import type { Scenario, StoredSession } from '../shared/domain';
+import { EMBER_DATE, isPartnerScenario, scenarioFromPartner } from '../shared/partner';
 const metricPayload = z.strictObject({ turnId: z.string().max(200), responseId: z.string().max(200).optional(),
   inputKind: z.enum(['text', 'audio']).optional(),
   guidanceUncertain: z.boolean().optional(),
@@ -25,7 +27,10 @@ const speechPayload = z.strictObject({ replyItemId: z.string().min(1).max(200), 
 // Do not accept arbitrary loopback ports or hosts that merely start with localhost.
 const localOrigins = new Set([3000, 5173, 5174].flatMap(port =>
   [`http://127.0.0.1:${port}`, `http://localhost:${port}`]));
-export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider; decider?: Decider; speechFetcher?: typeof fetch } = {}) {
+function tunnelOrigin(origin: string) {
+  try { const url = new URL(origin); return url.protocol === 'https:' && url.hostname.endsWith('.trycloudflare.com') && !url.port; } catch { return false; }
+}
+export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; dating?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider; decider?: Decider; speechFetcher?: typeof fetch } = {}) {
   const app = express(); const store = options.store ?? new ConversationStore();
   const config = options.adaptation ?? adaptationConfig({});
   const coordinator = new AdaptationCoordinator(store, scenarios, config, options.provider, options.decider);
@@ -35,7 +40,8 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
   // Local app: reject cross-origin writes; do not provide a public token minting service.
   app.use('/api', (req, _res, next) => {
     const origin = req.get('origin');
-    if (origin && !localOrigins.has(origin))
+    // The iPhone reaches the app through a Cloudflare tunnel; the browser marks those calls same-origin.
+    if (origin && !localOrigins.has(origin) && !(tunnelOrigin(origin) && req.get('sec-fetch-site') === 'same-origin'))
       return next(new ApiError(403, 'Only the local application can use this API.'));
     if (req.get('sec-fetch-site') === 'cross-site') return next(new ApiError(403, 'Cross-site requests are not allowed.'));
     next();
@@ -43,8 +49,20 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
   app.use(express.json({ limit: '2mb' }));
   app.get('/api/health', (_req, res) => res.json({ ok: true, credentialsConfigured: Boolean(options.apiKey?.trim()) }));
   app.get('/api/scenarios', (_req, res) => res.json(scenarios));
+  // Dates started from Ember (phone), grouped by partner, so the lab can show their trees and scores.
+  app.get('/api/ember/dates', (_req, res) => {
+    const dates = new Map<string, { scenario: Scenario; sessions: StoredSession[] }>();
+    for (const session of store.list().filter(s => isPartnerScenario(s.scenarioId))) {
+      const entry = dates.get(session.scenarioId) ?? { scenario: store.scenario(session.id)!, sessions: [] };
+      entry.scenario = store.scenario(session.id) ?? entry.scenario; entry.sessions.push(session); dates.set(session.scenarioId, entry);
+    }
+    res.json([...dates.values()]);
+  });
   app.post('/api/sessions', async (req, res) => {
-    const scenario = scenarios.find(s => s.id === req.body?.scenarioId);
+    const id = req.body?.scenarioId;
+    // An Ember date: her profile and yours. The lab continues one by its id once the server has seen it.
+    const scenario = id === EMBER_DATE ? scenarioFromPartner(req.body?.partner, req.body?.user)
+      : scenarios.find(s => s.id === id) ?? (typeof id === 'string' && isPartnerScenario(id) ? store.latestScenario(id) : undefined);
     if (!scenario) throw new ApiError(400, 'Choose a valid scenario.');
     // The app always uses adaptive; static stays available to scripts and tests.
     const mode = req.body?.mode ?? 'adaptive';
@@ -154,9 +172,11 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
   app.get('/api/sessions/:id', (req, res) => res.json(store.get(req.params.id)));
   app.use('/api', (_req, _res, next) => next(new ApiError(404, 'API route not found.')));
   const dist = options.dist ?? resolve('dist');
+  // Built app: the lab and live date under /practice (Vite base), Ember's static pages at /.
   if (existsSync(resolve(dist, 'index.html'))) {
-    app.use(express.static(dist));
-    app.get('/{*path}', (_req, res) => res.sendFile(resolve(dist, 'index.html')));
+    app.use('/practice', express.static(dist));
+    app.get('/practice/{*path}', (_req, res) => res.sendFile(resolve(dist, 'index.html')));
+    app.use(express.static(options.dating ?? resolve('dating'), { dotfiles: 'ignore' }));
   }
   const errors: ErrorRequestHandler = (err, _req, res, _next) => {
     const status = err instanceof ApiError ? err.status : err?.type === 'entity.too.large' ? 413 : err instanceof SyntaxError ? 400 : 500;

@@ -1,4 +1,4 @@
-import type { BranchHistoryItem, ConversationTree, ProtocolEvent, TreeNode, Turn } from './domain';
+import type { BranchHistoryItem, ConversationTree, ProtocolEvent, StoredSession, TreeNode, Turn } from './domain';
 import type { DynamicCharacterState } from './characterState';
 /** The tree is the source of truth; each Higgs session only replays one path of it. */
 export const SEED_PREFIX = 'pwseed_';
@@ -55,6 +55,16 @@ export function attachStates(tree: ConversationTree, sessionId: string, states: 
     if (node && node.stateAfter?.id !== state.id) { nodes[id] = { ...node, stateAfter: state }; changed = true; }
   }
   return changed ? { ...tree, nodes } : tree;
+}
+/** Rebuilds a tree from recorded sessions: each one continues from the last line it replayed. HEAD is the newest. */
+export function treeFromSessions(sessions: StoredSession[]): ConversationTree {
+  let tree = emptyTree();
+  for (const session of [...sessions].sort((a, b) => a.createdAt - b.createdAt)) {
+    const base = session.branch?.history.at(-1)?.nodeId ?? null;
+    tree = syncSession(tree, base && tree.nodes[base] ? base : null, session.id, session.turns);
+    tree = attachStates(tree, session.id, session.adaptation?.states ?? []);
+  }
+  return tree;
 }
 export const checkpointAt = (path: TreeNode[]) => [...path].reverse().find(n => n.stateAfter)?.stateAfter;
 /** Replayed items echo back as conversation.item.added; they already live in the tree. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Turn } from '../shared/domain';
-import { childMap, emptyTree, isSeedEcho, pathTo, revertTo, seedEvents, syncSession } from '../shared/tree';
+import type { StoredSession, Turn } from '../shared/domain';
+import { childMap, emptyTree, isSeedEcho, pathTo, revertTo, seedEvents, syncSession, treeFromSessions } from '../shared/tree';
 const turn = (itemId: string, role: Turn['role'], text: string | null, startedAt: number, status: Turn['status'] = 'complete'): Turn =>
   ({ itemId, role, text, transcriptFinal: status === 'complete', status, order: 0, startedAt, updatedAt: startedAt });
 const texts = (tree: ReturnType<typeof emptyTree>) => pathTo(tree, tree.headId).map(n => n.text);
@@ -47,5 +47,14 @@ describe('conversation tree', () => {
     ]);
     expect(isSeedEcho({ type: 'conversation.item.added', item: { id: 'pwseed_1' } })).toBe(true);
     expect(isSeedEcho({ type: 'conversation.item.added', item: { id: 'item_live' } })).toBe(false);
+  });
+  it('rebuilds the phone\'s branches from server sessions, newest branch as HEAD', () => {
+    const session = (id: string, createdAt: number, turns: Turn[], history: string[] = []) => ({ schemaVersion: 1, id, scenarioId: 'ember-date:amara',
+      characterId: 'ember-date:amara', status: 'closed', createdAt, updatedAt: createdAt, revision: 1, turns,
+      branch: history.length ? { history: history.map(nodeId => ({ nodeId, sessionId: 's1', itemId: nodeId.slice(3), role: 'user', text: 'x' })) } : undefined }) as StoredSession;
+    // s2 rewound to just after her first reply and said something else.
+    const tree = treeFromSessions([session('s2', 2, [turn('u9', 'user', 'Actually, tell me about you.', 5)], ['s1/u1', 's1/a1']), session('s1', 1, first)]);
+    expect(texts(tree)).toEqual(['How are you?', 'Not bad.', 'Actually, tell me about you.']);
+    expect(childMap(tree).get('s1/a1')?.map(n => n.text)).toEqual(["I'm good as well.", 'Actually, tell me about you.']);
   });
 });

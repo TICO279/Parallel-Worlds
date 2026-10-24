@@ -21,7 +21,7 @@ Requirements: **Node.js 24 LTS** and **pnpm 11+**. The lockfile records tested v
 On this workstation pnpm is bundled with Codex; npm is not on PATH.
 
 For everyday testing with one address, run `pnpm build` after code changes, then
-`pnpm start` and open **http://127.0.0.1:3000/**. This serves the frontend and API
+`pnpm start` and open **http://127.0.0.1:3000/practice/** (Ember, the dating app, is at `/`). This serves the frontend and API
 from one process. If it is already running, use the existing page instead of starting
 another copy. Stop your running command with Ctrl+C before restarting it.
 
@@ -37,7 +37,7 @@ Copy-Item .env.example .env
 pnpm dev
 ```
 
-Open **http://127.0.0.1:5173/**. Choose a scenario, click **Start conversation**,
+Open **http://127.0.0.1:5173/practice/**. Choose a scenario, click **Start conversation**,
 then type a message, or **Enable microphone** and say hello. Typing is available while
 the microphone is off. Allow microphone access in your browser. The user speaks first. Headphones improve interruption behavior.
 
@@ -58,7 +58,7 @@ the app reports a score reset instead of claiming full restoration.
 pnpm test
 pnpm typecheck
 pnpm build
-pnpm start  # after build: frontend and API at http://127.0.0.1:3000/
+pnpm start  # after build: Ember at http://127.0.0.1:3000/, the lab at /practice/
 ```
 
 The API binds to `127.0.0.1:3000`; Vite proxies `/api` in development.
@@ -77,6 +77,26 @@ with `pnpm dev:server`; the frontend can stay running.
 Run commands from the repository root. `start` uses the TypeScript runtime in dev
 dependencies, so do not install with `--prod`. The project-local pnpm store and hoisted
 linker avoid Windows shared-store symlink restrictions. No database or Docker is needed.
+
+## Ember: the phone dating app
+
+`dating/` holds Ember, a static mock dating app (from Dating-App-Assistant-Extension), served at
+`/`; the lab is at `/practice/`. Ember has three tabs: **Discover** (like or pass; every like is a
+match), **Messages** (chats with your matches) and **My profile** (who you are; saved in the
+browser). On her profile, the **Parallel Worlds** button (between pass and like) opens
+`/practice/?partner=…` and `PhoneDate` starts an adaptive first date with her; **Evaluate** shows
+how she feels so far. The server builds her character from her profile and
+gives her yours (`shared/partner.ts`, scenario `ember-date:<name>`); outgoing partners speak first
+about something on your profile. Every line you say is a breakpoint on the timeline: tap it twice
+to rewind to just before it and continue in a fresh session that replays the heard dialogue.
+★ marks lines the decision model judged a major shift. The lab lists these dates under
+**Met on Ember**, rebuilt from the server's sessions (`GET /api/ember/dates`), and can continue them.
+
+To use it on an iPhone, Safari needs HTTPS for the microphone. Run
+`cloudflared tunnel --url http://127.0.0.1:5173` next to `pnpm dev`, open the printed
+`https://….trycloudflare.com` address, and Add to Home Screen. The API accepts that origin
+only for same-origin HTTPS requests. Anyone with the address can spend your Boson key, so
+do not share it, and stop the tunnel when you are done.
 
 ## Architecture
 
