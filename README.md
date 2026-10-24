@@ -1,7 +1,7 @@
 # Parallel Worlds
 
 A local voice-conversation lab powered by Boson Higgs Realtime. Phase 1 includes
-Alex's first date and Morgan's mock interview, microphone streaming, server VAD,
+Alex's first date, microphone streaming, server VAD,
 interruptions, ordered transcripts, and JSON export.
 
 **Phase 2:** Every conversation is adaptive: mock or opt-in live appraisal (DeepSeek Flash
@@ -161,7 +161,6 @@ With a populated `.env`:
 
 ```powershell
 pnpm probe
-pnpm probe --scenario morgan-interview --message "What makes a strong project explanation?"
 ```
 
 The probe mints a credential, waits for a real session acknowledgement, sends a text
@@ -175,7 +174,7 @@ and audio lifecycle, worklet counting/overflow, microphone cleanup, recording re
 and real local HTTP requests. Browser smoke checks cover selection and missing-key errors.
 
 After a key was supplied, authenticated Boson probes successfully created sessions
-and completed text responses for Alex and Morgan. The resolved VAD threshold was 0.85.
+and completed text responses for Alex. The resolved VAD threshold was 0.85.
 Phase 2 adds [live update, synthetic audio, and static/adaptive text evaluation](docs/phase2.md).
 Live external appraisal is covered by the [realism verification report](docs/realism-implementation.md).
 **Physical microphone/speaker conversations, human interruptions and improved emotional

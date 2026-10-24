@@ -26,11 +26,9 @@ export const RELATIONSHIP_RULES = {
 } as const;
 export const NEGATIVE_EVENTS: ReadonlySet<string> = new Set(['insult', 'offensive_joke', 'hostility', 'boundary_pressure']);
 
-export function initialRelationship(character: Character): Relationship {
-  // Alex starts as a reserved stranger on a first date; Morgan starts professionally at ease.
-  return character.id === 'alex'
-    ? { comfort: 0.35, trust: 0.4, interest: 0.55, respect: 0.5, closeness: 0.1, tension: 0, warmth: 0.1 }
-    : { comfort: 0.6, trust: 0.5, interest: 0.5, respect: 0.5, closeness: 0.05, tension: 0, warmth: 0.1 };
+export function initialRelationship(_character: Character): Relationship {
+  // Every character is a first date, so everyone starts as a reserved stranger.
+  return { comfort: 0.35, trust: 0.4, interest: 0.55, respect: 0.5, closeness: 0.1, tension: 0, warmth: 0.1 };
 }
 
 const round = (n: number) => Number(n.toFixed(6));

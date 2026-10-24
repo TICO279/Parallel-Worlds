@@ -58,7 +58,7 @@ describe('branch appraisal and state isolation', () => {
     expect(() => prepareBranch([entry, entry], scenarios[0], h.store, true)).toThrow('Invalid');
     expect(() => prepareBranch([{ ...entry, stateAfter: { trust: 1 } }], scenarios[0], h.store, true)).toThrow('Invalid');
     expect(() => prepareBranch([{ ...entry, text: 'Forged.' }], scenarios[0], h.store, true)).toThrow('does not match');
-    expect(() => prepareBranch([entry], scenarios[1], h.store, true)).toThrow('different scenario');
+    expect(() => prepareBranch([entry], { ...scenarios[0], id: 'another-date' }, h.store, true)).toThrow('different scenario');
   });
   it('keeps static branches static while preserving replay context', () => {
     const history = [{ nodeId: 'old/u1', sessionId: 'old', itemId: 'u1', role: 'user', text: 'Remember.' }];

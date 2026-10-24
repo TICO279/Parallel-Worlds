@@ -6,7 +6,7 @@ dotenv.config({ quiet: true });
 const arg = (name: string) => { const index = process.argv.indexOf(name); return index >= 0 ? process.argv[index + 1] : undefined; };
 async function main() {
   const scenarioId = arg('--scenario') ?? 'alex-first-date'; const scenario = scenarios.find(s => s.id === scenarioId);
-  if (!scenario) throw new Error('Unknown scenario. Use alex-first-date or morgan-interview.');
+  if (!scenario) throw new Error('Unknown scenario. Use alex-first-date.');
   const credential = await mintCredential(process.env.BOSON_API_KEY);
   const spec = buildHiggsConfig(buildContext(scenario));
   const config = { ...spec, session: { ...(spec.session as object), output_modalities: ['text'] } };

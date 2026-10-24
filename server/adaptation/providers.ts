@@ -13,26 +13,20 @@ export class MockAppraisalProvider implements AppraisalProvider {
   readonly name = 'mock';
   async appraise(input: AppraisalInput, signal: AbortSignal): Promise<RealismAppraisal> {
     signal.throwIfAborted(); const base: Appraisal = { interpretation: 'An ordinary conversational event.', deltas: { comfort: 0, trust: 0, curiosity: 0, engagement: 0 }, tone: input.previous.tone, goal: input.previous.goal, guidance: 'Continue naturally.' }; const text = input.utterance.toLowerCase();
-    const interview = input.character.id === 'morgan'; const memory = input.previous.realism?.memory ?? [];
+    const memory = input.previous.realism?.memory ?? [];
     const pressure = memory.find(n => n.category === 'boundary_pressure' && n.status === 'active');
     let event: RealismAppraisal['event'] = 'neutral';
     base.deltas = { comfort: 0, trust: 0, curiosity: 0, engagement: 0 }; base.tone = input.previous.tone;
     base.guidance = 'Allow an ordinary exchange without forced enthusiasm, reassurance or another question.';
     if (/you owe me|ignore your boundaries|shut up|idiot|tell me now|only joking/.test(text)) {
-      event = 'boundary_pressure'; base.deltas = { comfort: -.10, trust: -.10, curiosity: -.04, engagement: -.08 }; base.tone = interview ? 'focused' : 'guarded';
+      event = 'boundary_pressure'; base.deltas = { comfort: -.10, trust: -.10, curiosity: -.04, engagement: -.08 }; base.tone = 'guarded';
       base.guidance = 'Maintain the boundary calmly. Do not reward pressure with intimacy or praise. A short firm statement is enough.';
     } else if (/sorry|apologi[sz]e|misunderstood|didn.t mean|my mistake/.test(text)) {
-      event = 'apology'; base.deltas.comfort = .02; base.tone = interview ? 'focused' : pressure || input.previous.tone === 'guarded' ? 'guarded' : 'reserved';
+      event = 'apology'; base.deltas.comfort = .02; base.tone = pressure || input.previous.tone === 'guarded' ? 'guarded' : 'reserved';
       base.guidance = 'Acknowledge a possible repair briefly. Keep unresolved concerns and wait for consistent respectful behavior before rebuilding trust.';
     } else if (pressure && /we can leave|leave that|different topic|what do you like|i understand/.test(text)) {
-      event = 'respectful_action'; base.deltas.comfort = .02; base.tone = interview ? 'focused' : 'reserved';
+      event = 'respectful_action'; base.deltas.comfort = .02; base.tone = 'reserved';
       base.guidance = 'Notice the change of topic without declaring the concern forgotten. Continue with measured openness.';
-    } else if (interview && /\d/.test(text) && /owned|reduced|measured|compared|wrote|migration/.test(text)) {
-      event = 'evidence'; base.deltas = { comfort: 0, trust: .03, curiosity: .03, engagement: .03 }; base.tone = 'focused';
-      base.guidance = 'Explore the specific decision and tradeoff. Treat reported results as claims to examine, not independently verified facts.';
-    } else if (interview && /amazing|huge success|best|great leader/.test(text)) {
-      event = 'claim'; base.deltas = { comfort: 0, trust: 0, curiosity: .01, engagement: -.02 }; base.tone = 'focused';
-      base.guidance = 'Request one concrete example of personal ownership and evidence. Withhold an assessment until there is enough detail.';
     } else if (/rather not|not comfortable|please don.t|my boundary/.test(text)) {
       event = 'boundary_setting'; base.guidance = 'Respect the stated limit without pressing for an explanation or praising it excessively.';
     } else if (/disagree|different view|don.t agree/.test(text)) {
@@ -40,17 +34,17 @@ export class MockAppraisalProvider implements AppraisalProvider {
     } else if (/relationship|looking for|long.term|honest/.test(text)) {
       event = 'claim'; base.deltas.curiosity = .02; base.guidance = 'Treat stated intentions as something to explore gradually, not proof of compatibility.';
     } else if (/nervous|vulnerable|i struggle|personal|afraid/.test(text)) {
-      event = 'disclosure'; base.deltas = { comfort: interview ? 0 : -.01, trust: 0, curiosity: .02, engagement: 0 };
-      base.tone = interview ? 'focused' : 'reserved'; base.guidance = 'Be considerate without assuming intimacy or competence. Let them decide how much to share.';
+      event = 'disclosure'; base.deltas = { comfort: -.01, trust: 0, curiosity: .02, engagement: 0 };
+      base.tone = 'reserved'; base.guidance = 'Be considerate without assuming intimacy. Let them decide how much to share.';
     } else if (/joke|laugh|funny|haha/.test(text)) {
-      event = 'humor'; base.deltas.comfort = interview ? .01 : .02; base.deltas.engagement = .01;
-      base.tone = interview ? 'focused' : 'playful'; base.guidance = interview ? 'Acknowledge lightly, then return to the substance.' : 'Respond with understated humor if it fits; do not force shared enthusiasm.';
+      event = 'humor'; base.deltas.comfort = .02; base.deltas.engagement = .01;
+      base.tone = 'playful'; base.guidance = 'Respond with understated humor if it fits; do not force shared enthusiasm.';
     } else if (input.context.some(c => c.role === 'assistant') && /what.*(sketch|book|draw)|what draws you/.test(text)) {
       event = 'reciprocity'; base.deltas = { comfort: .02, trust: .01, curiosity: .03, engagement: .02 };
       base.guidance = 'Answer the specific follow-up with a genuine preference. Let reciprocity develop without automatic intimacy.';
-    } else if (/pottery|coffee|café|hiking|reading|project|built|result/.test(text)) {
+    } else if (/pottery|coffee|café|hiking|reading/.test(text)) {
       event = 'interest'; base.deltas = { comfort: .01, trust: 0, curiosity: .03, engagement: .01 };
-      base.tone = interview ? 'focused' : 'reserved'; base.guidance = interview ? 'Ask what they personally decided or built.' : 'Explore the interest without assuming it is shared. Offer your own preference when relevant.';
+      base.tone = 'reserved'; base.guidance = 'Explore the interest without assuming it is shared. Offer your own preference when relevant.';
     }
     const interpretations: Record<RealismAppraisal['event'], string> = {
       neutral: 'Ordinary conversation; no substantial evidence of relational change.', interest: 'An interest was offered; mutual compatibility is not established.',
@@ -63,7 +57,7 @@ export class MockAppraisalProvider implements AppraisalProvider {
     };
     base.interpretation = interpretations[event];
     const evidence = [{ turnId: input.turnId ?? 'current', quote: input.utterance.slice(0, 160) }];
-    const category = event === 'boundary_pressure' ? 'boundary_pressure' : event === 'apology' ? 'repair' : event === 'boundary_setting' ? 'boundary' : event === 'interest' ? 'preference' : event === 'claim' || event === 'evidence' ? 'claim' : 'interaction';
+    const category = event === 'boundary_pressure' ? 'boundary_pressure' : event === 'apology' ? 'repair' : event === 'boundary_setting' ? 'boundary' : event === 'interest' ? 'preference' : event === 'claim' ? 'claim' : 'interaction';
     const memoryOperations: RealismAppraisal['memoryOperations'] = event === 'neutral' ? [] : [{ action: 'add', category, text: `User ${event}: ${input.utterance}`.slice(0, 160), evidence, targetId: null }];
     if (event === 'respectful_action' && pressure && pressure.progress >= 1) memoryOperations.push({ action: 'resolve', category: 'boundary_pressure', text: 'Repeated respectful continuation supports gradual repair.', evidence, targetId: pressure.id });
     return realismAppraisalSchema.parse({ ...base, schemaVersion: 2, event, evidence,
@@ -72,7 +66,7 @@ export class MockAppraisalProvider implements AppraisalProvider {
       expectation: { prior: 'Look for reciprocity and respect without assuming compatibility.', update: base.interpretation.slice(0, 160), alternative: 'The wording may admit another interpretation; do not infer hidden intent as fact.' },
       motives: { approach: input.character.goals[0].slice(0, 120), protect: input.character.boundaries[0].slice(0, 120) },
       brief: { intent: base.goal.slice(0, 160), stance: base.tone, concern: pressure?.text.slice(0, 160) ?? '', expression: event === 'boundary_pressure' ? 'restrained' : 'measured',
-        move: event === 'boundary_pressure' ? 'boundary' : event === 'claim' && interview ? 'probe' : event === 'reciprocity' ? 'disclose' : 'acknowledge',
+        move: event === 'boundary_pressure' ? 'boundary' : event === 'reciprocity' ? 'disclose' : 'acknowledge',
         scope: pressure || event === 'boundary_pressure' ? 'persistent' : 'turn', avoid: 'Automatic praise, instant forgiveness, invented shared interests, and forced questions.' }, memoryOperations });
   }
 }

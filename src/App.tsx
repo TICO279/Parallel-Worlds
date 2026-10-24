@@ -189,10 +189,10 @@ export function App() {
     <aside className="sidebar">
       <a className="brand" href="/" aria-label="Parallel Worlds home"><span className="brand-symbol">◒</span><span>parallel<br/>worlds<span className="brand-period">.</span></span></a>
       <div className="sidebar-intro"><span className="eyebrow">THE CONVERSATION LAB</span><p>A different connection.<br/>A world of possibility.</p></div>
-      <div className="scenario-label"><span className="eyebrow">CHOOSE YOUR SCENARIO</span><span>01 — 02</span></div>
+      <div className="scenario-label"><span className="eyebrow">CHOOSE YOUR DATE</span><span>01 — {String(scenarios.length).padStart(2, '0')}</span></div>
       <nav aria-label="Scenarios" className="scenario-list">{scenarios.map((s, i) => <button key={s.id} disabled={busy} aria-pressed={selected === s.id}
         className={`scenario-option ${selected === s.id ? 'selected' : ''}`} onClick={() => { setSelected(s.id); setSelectedLine(null); }}>
-        <span className="scenario-number">0{i + 1}</span><span><strong>{s.title}</strong><small>{i === 0 ? 'Connection & curiosity' : 'Clarity & confidence'}</small></span><span className="option-arrow">↗</span>
+        <span className="scenario-number">0{i + 1}</span><span><strong>{s.title}</strong><small>Connection & curiosity</small></span><span className="option-arrow">↗</span>
       </button>)}</nav>
       <div className="sidebar-note"><span className="small-orbit">✳</span><p>Every conversation starts<br/>with being present.</p></div>
       <footer className="sidebar-footer"><span className="status-dot"/> <span className="app-version">{APP_VERSION}</span> <span>ADAPTIVE CHARACTERS</span></footer>
@@ -205,7 +205,7 @@ export function App() {
         {error && <div role="alert" className="notice error"><span>{error}</span><button className="text-button" onClick={() => setError(null)} aria-label="Dismiss error">×</button></div>}
         <div className="conversation-grid">
           <section className="character-card" aria-labelledby="character-title">
-            <div className="card-top"><span className="eyebrow">{selected === 'alex-first-date' ? 'A CHANCE TO CONNECT' : 'A CHANCE TO GROW'}</span><span className="card-index">{selected === 'alex-first-date' ? '01' : '02'}</span></div>
+            <div className="card-top"><span className="eyebrow">A CHANCE TO CONNECT</span><span className="card-index">{String(scenarios.findIndex(s => s.id === selected) + 1).padStart(2, '0')}</span></div>
             <div className={`character-art ${activity === 'speaking' ? 'speaking' : ''}`} aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="character-monogram">{scenario?.character.name[0] ?? 'A'}<span>✳</span></div><span className="art-caption">A VOICE. A PERSPECTIVE. A POSSIBILITY.</span></div>
             <div className="character-copy"><span className="eyebrow">MEET YOUR CONVERSATION PARTNER</span><h2 id="character-title">{scenario?.character.name ?? 'Alex'}</h2><p>{scenario?.character.description ?? 'Loading scenarios…'}</p><div className="traits">{scenario?.character.traits.slice(0, 3).map(t => <span key={t}>{t}</span>)}</div></div>
             <div className="setting"><span>THE SETTING</span><p>{scenario?.setting}</p></div>

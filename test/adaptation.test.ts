@@ -67,12 +67,6 @@ describe('configuration and providers', () => {
     const metric = example.metric as typeof metricNames[number];
     expect(Math.sign(next[metric] - request.previous[metric])).toBe(example.direction); expect(next.tone).toBe(example.tone);
   });
-  it('makes mock humor personality-dependent', async () => {
-    const provider = new MockAppraisalProvider(); const signal = new AbortController().signal;
-    const alex = await provider.appraise({ ...input(), utterance: 'That was a funny joke.' }, signal);
-    const morgan = await provider.appraise({ ...input(), character: scenarios[1].character, utterance: 'That was a funny joke.' }, signal);
-    expect(alex.tone).toBe('playful'); expect(morgan.tone).toBe('focused'); expect(alex.deltas.comfort).toBeGreaterThan(morgan.deltas.comfort);
-  });
   it('repairs an apology gradually from a guarded state without resetting its history', async () => {
     const previous = { ...initialState(profile, 's', 1), trust: .10, comfort: .20, tone: 'guarded' as const };
     const output = await new MockAppraisalProvider().appraise({ ...input(), previous, utterance: 'I apologize. Can we reset?' }, new AbortController().signal);

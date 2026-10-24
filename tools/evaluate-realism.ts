@@ -12,7 +12,7 @@ async function api(path: string, method = 'GET', body?: unknown) {
 async function main() {
   if (!process.argv.includes('--live')) throw new Error('Pass --live to make billable requests with the configured project provider.');
   const label = arg('--label') ?? 'revised'; if (!/^[a-z0-9-]+$/.test(label)) throw new Error('Invalid report label.');
-  const selected = process.argv.includes('--smoke') ? sequences.filter(s => ['alex-boundary', 'morgan-evidence'].includes(s.id)) : sequences;
+  const selected = process.argv.includes('--smoke') ? sequences.filter(s => ['alex-boundary', 'alex-humor'].includes(s.id)) : sequences;
   const rows: any[] = []; const failures: any[] = []; const started = Date.now();
   const deadline = setTimeout(() => process.exit(2), process.argv.includes('--smoke') ? 180000 : 900000);
   try {

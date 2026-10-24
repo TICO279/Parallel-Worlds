@@ -2,16 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { buildContext, scenarios, validateScenario } from '../server/orchestrator';
 import { buildHiggsConfig } from '../server/higgs';
 describe('scenario orchestration', () => {
-  it('has two valid, distinct scenarios', () => {
+  it('has only valid, distinct first-date scenarios', () => {
     scenarios.forEach(s => expect(() => validateScenario(s)).not.toThrow());
-    expect(new Set(scenarios.map(s => s.id)).size).toBe(2);
+    expect(scenarios.map(s => s.id)).toEqual(['alex-first-date']);
     expect(() => validateScenario({ ...scenarios[0], setting: '' })).toThrow();
   });
   it('constructs Alex identity, values, motivation and setting from data', () => {
     const { instructions } = buildContext(scenarios[0]);
     for (const value of ['Alex', 'honesty', 'reserved', 'compatibility', 'café', 'disagree kindly']) expect(instructions).toContain(value);
     expect(instructions).not.toContain('Current response guidance');
-    expect(buildContext(scenarios[1]).instructions).toContain('Morgan');
   });
   it('keeps identity immutable when adding mutable guidance', () => {
     const before = structuredClone(scenarios[0]);
