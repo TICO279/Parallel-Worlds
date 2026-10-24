@@ -10,6 +10,7 @@ import { relationshipNames } from '../shared/characterState';
 import { turnPipeline } from './turnPipeline';
 import { DatingReview } from './DatingReview';
 import { loadTrees, saveTrees } from './treeStorage';
+import { forgetIfRestarted } from './freshStart';
 
 /** Phone trees are kept apart from the lab's, so two open tabs never overwrite each other. */
 const PHONE_TREES = 'parallel-worlds.phone-trees.v1';
@@ -92,8 +93,13 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
 
   useEffect(() => {
     let mounted = true;
-    void api<{ credentialsConfigured: boolean }>('/api/health')
-      .then(health => { if (mounted) setConfigured(health.credentialsConfigured); })
+    void api<{ credentialsConfigured: boolean; bootId?: string }>('/api/health')
+      .then(health => {
+        if (!mounted) return;
+        setConfigured(health.credentialsConfigured);
+        // The app was restarted since this phone last saw it: start this date from scratch.
+        if (forgetIfRestarted(health.bootId)) { treesRef.current = {}; setTrees({}); setStars([]); }
+      })
       .catch(() => { if (mounted) setError('The date lab is not running. Start Parallel Worlds, then try again.'); });
     const c = new HiggsClient({
       bootstrap: async signal => {
@@ -211,7 +217,9 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
     void client.current?.connect();
   }
   async function onMic() {
-    setPicked(null); setMenu(false);
+    setMenu(false);
+    // Speaking with a point picked means "from there": go back first, then listen.
+    if (picked) { await rewindTo(picked, { mic: true }); return; }
     if (connection === 'closing') return;
     if (connection === 'connecting') { armMic.current = false; await client.current?.disconnect(); return; }
     if (!ready) { join(true); return; }
@@ -221,7 +229,9 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
   async function send(event: FormEvent) {
     event.preventDefault();
     const text = draft.trim(); if (!text || connection === 'closing') return;
-    setPicked(null); setMenu(false);
+    setMenu(false);
+    // Typing with a point picked means "say this instead, from there".
+    if (picked) { await rewindTo(picked, { text }); return; }
     if (!ready) {
       pendingText.current = text; setDraft('');
       if (connection !== 'connecting') join(false);
@@ -230,8 +240,12 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
     if (mic) { setBusy(true); await client.current?.toggleMic(); setBusy(false); }
     if (client.current?.sendText(text)) setDraft('');
   }
-  /** Go back to just before you said this line, then carry on in a fresh session from there. */
-  async function rewindTo(nodeId: string, practice = false) {
+  /**
+   * Go back to just before you said this line, then carry on in a fresh session from there.
+   * `then`: what you do next from that point: start the mic, say a typed line, or rejoin to practice it
+   * (from the feedback sheet); otherwise rejoin as you were.
+   */
+  async function rewindTo(nodeId: string, then?: { mic?: boolean; text?: string; practice?: boolean }) {
     if (treesRef.current[scenarioId]?.nodes[nodeId]?.role !== 'user') return;
     const wasLive = LIVE.includes(client.current?.connectionState ?? 'idle'); const hadMic = mic;
     setPicked(null); setMenu(false); setDraft('');
@@ -240,7 +254,10 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
     const head = revertTo(treesRef.current[scenarioId] ?? emptyTree(), nodeId).headId;
     setTrees(t => ({ ...t, [scenarioId]: { ...(t[scenarioId] ?? emptyTree()), headId: head } }));
     treesRef.current = { ...treesRef.current, [scenarioId]: { ...(treesRef.current[scenarioId] ?? emptyTree()), headId: head } };
-    if (wasLive || practice) join(practice ? false : hadMic);
+    if (then?.text) { pendingText.current = then.text; join(false); }
+    else if (then?.mic) join(true);
+    else if (then?.practice) join(false);
+    else if (wasLive) join(hadMic);
   }
   function undo() { const lastLine = breakpoints.at(-1); if (lastLine) void rewindTo(lastLine.id); }
   async function startOver() {
@@ -344,7 +361,7 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
 
             <main className="pw-stage" onClick={() => { setPicked(null); setMenu(false); }}>
               <div key={pulse} className={`pw-caption ${picked ? 'pw-pulse' : ''} ${pickedNode ? 'is-past' : ''}`} aria-live="polite">
-                <small>{pickedNode ? 'You said, at this point' : speaker}{!pickedNode && status && <em> · {status}</em>}</small>
+                <small>{pickedNode ? 'Go back to before you said this: tap the dot again, speak, or type' : speaker}{!pickedNode && status && <em> · {status}</em>}</small>
                 <p>{caption}</p>
               </div>
 
@@ -357,7 +374,7 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
                         aria-label={`${on ? 'Rewind to before' : 'Show'} line ${index + 1}: ${short(node.text)}`} disabled={busy} onClick={() => pick(node.id)}>
                         {on && <span className="pw-tip">{starred ? 'Worth exploring' : `Line ${index + 1}`}</span>}
                         {on ? <Icon d={ICONS.rewind} className="pw-icon pw-rewind" /> : starred ? <Icon d={ICONS.star} className="pw-icon pw-star" /> : null}
-                        {on && <span className="pw-tap">Tap to rewind</span>}
+                        {on && <span className="pw-tap">Rewind here</span>}
                       </button>
                     );
                   })}
@@ -400,7 +417,7 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
                 <h2 id="pw-eval-title">Your date with {name}</h2>
                 <DatingReview key={reviewGeneration} path={path} busy={inSession} scenarioId={scenarioId} partner={brief}
                   onPause={() => void pauseReview()} onView={viewReviewTurn}
-                  onPractice={id => { setEvaluating(false); void rewindTo(id, true); }} />
+                  onPractice={id => { setEvaluating(false); void rewindTo(id, { practice: true }); }} />
                 <details className="pw-feelings"><summary>How {name} feels so far</summary>
                 {relationship ? <>
                   {relationshipNames.map(key => (
