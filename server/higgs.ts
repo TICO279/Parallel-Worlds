@@ -5,7 +5,7 @@ export function buildHiggsConfig(spec: SessionSpec, options: { text?: boolean } 
   return { type: 'session.update', session: {
     model: 'higgs-realtime', instructions: spec.instructions, output_modalities: [options.text ? 'text' : 'audio'],
     audio: {
-      input: { format: { type: 'audio/pcm', rate: 24000 }, turn_detection: { type: 'server_vad' },
+      input: { format: { type: 'audio/pcm', rate: 24000 }, turn_detection: { type: 'semantic_vad' },
         transcription: { model: 'higgs-stt-3.1', language: spec.language } },
       output: { format: { type: 'audio/pcm', rate: 24000 }, voice: spec.voice },
     },

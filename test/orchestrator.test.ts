@@ -23,7 +23,7 @@ describe('scenario orchestration', () => {
     const config = buildHiggsConfig(buildContext(scenarios[0]));
     expect(config).toMatchObject({ type: 'session.update', session: {
       model: 'higgs-realtime', output_modalities: ['audio'], audio: {
-        input: { format: { type: 'audio/pcm', rate: 24000 }, turn_detection: { type: 'server_vad' }, transcription: { model: 'higgs-stt-3.1', language: 'en' } },
+        input: { format: { type: 'audio/pcm', rate: 24000 }, turn_detection: { type: 'semantic_vad' }, transcription: { model: 'higgs-stt-3.1', language: 'en' } },
         output: { voice: 'default', format: { type: 'audio/pcm', rate: 24000 } },
       },
     } });
