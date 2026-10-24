@@ -89,8 +89,13 @@ how she feels so far. The server builds her character from her profile and
 gives her yours (`shared/partner.ts`, scenario `ember-date:<name>`); outgoing partners speak first
 about something on your profile. Every line you say is a breakpoint on the timeline: tap it twice
 to rewind to just before it and continue in a fresh session that replays the heard dialogue.
-★ marks lines the decision model judged a major shift. The lab lists these dates under
-**Met on Ember**, rebuilt from the server's sessions (`GET /api/ember/dates`), and can continue them.
+★ marks lines the decision model judged a major shift.
+
+`/practice/` is the **monitor**: a read-only web page that runs alongside the phone. It polls
+`GET /api/ember/dates` every second and follows the date in progress: who you are dating, every
+line as it arrives, the branch tree and her scores. It reads from the server, so it also follows
+a real iPhone. The original talk-to-Alex lab is still at `/practice/?lab` for development, tests
+and evaluation tools.
 
 To use it on an iPhone, Safari needs HTTPS for the microphone. Run
 `cloudflared tunnel --url http://127.0.0.1:5173` next to `pnpm dev`, open the printed

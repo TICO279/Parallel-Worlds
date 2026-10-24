@@ -55,6 +55,7 @@ const profiles = [
     job: "Gallery assistant",
     photo: "photos/amara.jpg",
     outgoing: true,
+    voice: "chloe",
     lookingFor: "Long-term partner",
     cardKicker: "I just realized that...",
     cardText: "The best conversations start before anyone checks their phone.",
@@ -88,6 +89,7 @@ const profiles = [
     job: "Architect",
     photo: "photos/jordan.jpg",
     outgoing: false,
+    voice: "marcus",
     lookingFor: "Long-term partner",
     cardKicker: "My simple pleasure...",
     cardText: "A rooftop, a bad skyline, and someone who will argue about both.",
@@ -119,6 +121,7 @@ const profiles = [
     job: "Editor",
     photo: "photos/elena.jpg",
     outgoing: true,
+    voice: "eleanor",
     lookingFor: "Long-term partner",
     cardKicker: "I want someone who...",
     cardText: "Will sit on a park bench until the light changes and not call it a plan.",
@@ -151,6 +154,7 @@ const profiles = [
     job: "Musician",
     photo: "photos/devin.jpg",
     outgoing: true,
+    voice: "jake",
     lookingFor: "New friends",
     cardKicker: "A surprising thing about me...",
     cardText: "I write the second verse on the subway. Every time.",
@@ -182,6 +186,7 @@ const profiles = [
     job: "Painter",
     photo: "photos/sofia.jpg",
     outgoing: false,
+    voice: "nora",
     lookingFor: "Not sure yet",
     cardKicker: "I know the best spot in town for...",
     cardText: "Olive oil, and I will judge a kitchen by the bottle on the counter.",
@@ -213,6 +218,7 @@ const profiles = [
     job: "Coach",
     photo: "photos/leo.jpg",
     outgoing: false,
+    voice: "oliver",
     lookingFor: "New friends",
     cardKicker: "My weekends are for...",
     cardText: "An easy five miles, then a very serious breakfast.",
@@ -244,6 +250,7 @@ const profiles = [
     job: "Photographer",
     photo: "photos/maya.jpg",
     outgoing: true,
+    voice: "chloe",
     lookingFor: "Long-term partner",
     cardKicker: "The way to win me over is...",
     cardText: "Take the window seat, and don't rush the second coffee.",
@@ -446,6 +453,30 @@ function threadTime(id) {
   return msgs[msgs.length - 1].time || "Now";
 }
 
+// First dates the date screen saved in this browser (src/PhoneDate.tsx), one conversation tree per partner.
+const DATE_TREES = "parallel-worlds.phone-trees.v1";
+
+function dateLines(p) {
+  try {
+    const trees = JSON.parse(localStorage.getItem(DATE_TREES) || "{}");
+    const tree = trees[`ember-date:${p.name.toLowerCase().replace(/[^\p{L}]+/gu, "-")}`];
+    return tree && tree.nodes ? Object.values(tree.nodes).filter((n) => n.text).length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function datesStrip() {
+  const dated = profiles.filter((p) => !state.blocked.includes(p.id)).map((p) => [p, dateLines(p)]).filter(([, lines]) => lines > 0);
+  if (!dated.length) return "";
+  return `<div class="dates-head"><div class="section-label">Your first dates</div><span>Pick up where you left off</span></div>
+    <div class="date-strip">${dated.map(([p, lines]) => `
+      <button type="button" class="date-chip" data-action="first-date" data-id="${p.id}" aria-label="Continue your first date with ${esc(p.name)}">
+        <span class="date-ava"><img src="${p.photo}" alt="" /><span class="date-badge">${icon.rings}</span></span>
+        <strong>${esc(p.name)}</strong><em>${lines} ${lines === 1 ? "line" : "lines"}</em>
+      </button>`).join("")}</div>`;
+}
+
 function messagesView() {
   const rows = state.matches.filter((id) => person(id) && !state.blocked.includes(id));
   const body = rows.length
@@ -467,6 +498,7 @@ function messagesView() {
     : `<div class="empty"><h2>No matches yet</h2><p>Like someone back and the chat will land here.</p></div>`;
   return `<div class="scroll-view">
     <header class="topbar center"><h1 class="page-title">Messages</h1></header>
+    ${datesStrip()}
     ${body}
   </div>`;
 }
@@ -546,7 +578,7 @@ function detailView(p) {
           ? `<button type="button" class="glass-round" data-action="open-chat" data-id="${p.id}" aria-label="Message ${esc(p.name)}">${icon.chat}</button>`
           : `<button type="button" class="glass-round nope" data-action="nope" data-id="${p.id}" aria-label="Pass">${icon.x}</button>`}
         <button type="button" class="pw-orb" data-action="first-date" data-id="${p.id}" aria-label="Simulate a first date with ${esc(p.name)}">
-          <span class="orb">${icon.rings}</span><span class="orb-label">Parallel Worlds</span>
+          <span class="orb">${icon.rings}</span><span class="orb-label">${dateLines(p) ? "Continue our date" : "Parallel Worlds"}</span>
         </button>
         <button type="button" class="glass-round like ${matched ? "is-on" : ""}" data-action="like" data-id="${p.id}" aria-label="${matched ? "Matched" : "Like"}" ${matched ? "disabled" : ""}>${icon.heart}</button>
       </div>`;
@@ -829,6 +861,7 @@ function startDate(id) {
   set("partner", p.name);
   set("from", p.id);
   set("opens", p.outgoing ? "1" : "0");
+  set("voice", p.voice);
   set("age", p.age);
   set("gender", p.gender);
   set("job", p.job);

@@ -5,7 +5,7 @@ export interface Character {
   values: string[]; motivation: string; goals: string[]; boundaries: string[]; speakingStyle: string; voice: string;
   realism?: { version: string; preferences: string[]; priorities: string[]; sensitivities: string[]; conflictingMotives: string[]; disagreementStyle: string };
 }
-export interface Scenario { id: string; title: string; setting: string; character: Character; }
+export interface Scenario { id: string; title: string; setting: string; character: Character; /** Profile photo path (Ember partners). */ image?: string; }
 export interface SessionSpec { instructions: string; voice: string; language: string; }
 export interface Turn {
   itemId: string; responseId?: string; previousItemId?: string | null;

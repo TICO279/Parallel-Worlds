@@ -57,4 +57,13 @@ describe('conversation tree', () => {
     expect(texts(tree)).toEqual(['How are you?', 'Not bad.', 'Actually, tell me about you.']);
     expect(childMap(tree).get('s1/a1')?.map(n => n.text)).toEqual(["I'm good as well.", 'Actually, tell me about you.']);
   });
+  it('restores replayed lines from the replay itself when their original session is gone', () => {
+    const resumed = { schemaVersion: 1, id: 's9', scenarioId: 'ember-date:amara', characterId: 'ember-date:amara', status: 'active', createdAt: 100, updatedAt: 100,
+      revision: 1, turns: [turn('u3', 'user', 'So, records?', 101)],
+      branch: { history: [{ nodeId: 'old/u1', sessionId: 'old', itemId: 'u1', role: 'user', text: 'How are you?' },
+        { nodeId: 'old/a1', sessionId: 'old', itemId: 'a1', role: 'assistant', text: 'Not bad.' }] } } as StoredSession;
+    expect(texts(treeFromSessions([resumed]))).toEqual(['How are you?', 'Not bad.', 'So, records?']);
+    // Before anyone speaks in the new session, the replayed path is already there.
+    expect(texts(treeFromSessions([{ ...resumed, turns: [] }]))).toEqual(['How are you?', 'Not bad.']);
+  });
 });

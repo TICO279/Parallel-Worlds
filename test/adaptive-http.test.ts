@@ -117,6 +117,21 @@ describe('speech route', () => {
     expect(data.voices.at(-1)).toMatchObject({ replyItemId: 'a1', provider: 'mock', ttsFirstAudioMs: expect.any(Number) });
     expect((await post(`/api/sessions/${id}/speech`, { replyItemId: 'a2', text: '' })).status).toBe(400);
   });
+  it('speaks each Ember partner in a preset voice matching their profile\'s gender', async () => {
+    const post = (path: string, body: unknown) => fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const voiceFor = async (partner: { name: string; gender?: string; voice?: string }) => {
+      const id = (await (await post('/api/sessions', { scenarioId: 'ember-date', partner })).json()).session.id;
+      await (await post(`/api/sessions/${id}/speech`, { replyItemId: 'a1', text: 'Hi there.' })).arrayBuffer();
+      return calls.at(-1)!.body.voice as string;
+    };
+    expect(['oliver', 'marcus', 'jake']).toContain(await voiceFor({ name: 'Jordan', gender: 'man' }));
+    expect(['chloe', 'nora', 'eleanor']).toContain(await voiceFor({ name: 'Amara', gender: 'woman' }));
+    expect(await voiceFor({ name: 'Jordan', gender: 'man' })).toBe(await voiceFor({ name: 'Jordan', gender: 'man' }));
+    expect(await voiceFor({ name: 'Sam' })).toBe('default');
+    // A profile can pick its voice, but never one of the other gender.
+    expect(await voiceFor({ name: 'Amara', gender: 'woman', voice: 'nora' })).toBe('nora');
+    expect(['oliver', 'marcus', 'jake']).toContain(await voiceFor({ name: 'Jordan', gender: 'man', voice: 'chloe' }));
+  });
   it('configures Higgs to reply in text so TTS can voice it', async () => {
     const boot = await (await fetch(base + '/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'alex-first-date' }) })).json();
     expect(boot.config.session.output_modalities).toEqual(['text']);

@@ -318,6 +318,19 @@ h1, h2, p { margin: 0; }
 }
 .scroll-view::-webkit-scrollbar, .detail-scroll::-webkit-scrollbar, .thread::-webkit-scrollbar { width: 0; height: 0; }
 
+.dates-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 16px; }
+.dates-head .section-label { margin: 4px 0 10px; }
+.dates-head span { font-size: 12px; color: #a1a1a6; }
+.date-strip { display: flex; gap: 16px; overflow-x: auto; padding: 0 16px 14px; border-bottom: 1px solid #f0f0f3; scrollbar-width: none; }
+.date-strip::-webkit-scrollbar { display: none; }
+.date-chip { flex: none; display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: none; padding: 0; color: #1c1c1e; }
+.date-ava { position: relative; width: 68px; height: 68px; padding: 3px; border-radius: 50%; background: conic-gradient(#5aa8ff, #ffb547, #5aa8ff); }
+.date-ava img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: center 20%; border: 2px solid #fff; display: block; }
+.date-badge { position: absolute; right: -4px; bottom: -2px; width: 28px; height: 20px; display: grid; place-items: center; border-radius: 10px; background: #13224d; border: 2px solid #fff; }
+.date-badge svg { width: 20px; height: 13px; }
+.date-chip strong { margin-top: 4px; font-size: 13px; }
+.date-chip em { font-style: normal; font-size: 11px; color: #a1a1a6; }
+.date-chip:active .date-ava { transform: scale(0.95); }
 .thread-row {
   width: 100%;
   display: flex;

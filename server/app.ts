@@ -101,12 +101,14 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     // The browser aborts when the user interrupts; stop paying for audio nobody will hear.
     res.on('close', () => { if (!res.writableFinished) controller.abort(); });
     const { input, record } = await coordinator.voice(id, replyItemId, text, controller.signal);
+    // Ember partners speak in a voice that matches their profile; others use TTS_VOICE.
+    const own = store.scenario(id)?.character.voice; const voice = own && own !== 'default' ? { ...speech, voice: own } : speech;
     const tag = `session ${id.slice(0, 8)} reply ${replyItemId}`;
-    const tts = { model: speech.model, voice: speech.voice, input, seconds: 0, ms: 0 };
+    const tts = { model: voice.model, voice: voice.voice, input, seconds: 0, ms: 0 };
     const finish = (extra: Partial<typeof tts> & { firstAudioMs?: number; stopped?: boolean; error?: string }) =>
       coordinator.finishTurn(id, { reply: text, ...(discardedDraft !== undefined && { discardedDraft }), ...(userItemId && { userItemId }), tts: { ...tts, ...extra } });
     let opened;
-    try { opened = await openSpeech(options.speechFetcher ?? fetch, options.apiKey, speech, input, controller.signal, tag); }
+    try { opened = await openSpeech(options.speechFetcher ?? fetch, options.apiKey, voice, input, controller.signal, tag); }
     catch (error) {
       const message = error instanceof ApiError ? error.message : 'Text-to-speech failed.';
       coordinator.recordVoiceTiming(id, replyItemId, { error: message });

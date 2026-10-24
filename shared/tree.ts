@@ -56,12 +56,21 @@ export function attachStates(tree: ConversationTree, sessionId: string, states: 
   }
   return changed ? { ...tree, nodes } : tree;
 }
-/** Rebuilds a tree from recorded sessions: each one continues from the last line it replayed. HEAD is the newest. */
+/**
+ * Rebuilds a tree from recorded sessions: each one continues from the last line it replayed. HEAD is the newest.
+ * Replayed lines whose own session is gone (the server restarted; the phone kept them) are restored from the replay.
+ */
 export function treeFromSessions(sessions: StoredSession[]): ConversationTree {
   let tree = emptyTree();
   for (const session of [...sessions].sort((a, b) => a.createdAt - b.createdAt)) {
-    const base = session.branch?.history.at(-1)?.nodeId ?? null;
-    tree = syncSession(tree, base && tree.nodes[base] ? base : null, session.id, session.turns);
+    const history = session.branch?.history ?? [];
+    let parentId: string | null = null;
+    for (const [index, item] of history.entries()) {
+      if (!tree.nodes[item.nodeId]) tree = { ...tree, nodes: { ...tree.nodes, [item.nodeId]: { id: item.nodeId, itemId: item.itemId, parentId,
+        sessionId: item.sessionId, role: item.role, text: item.text, status: 'complete', createdAt: session.createdAt - history.length + index } } };
+      parentId = item.nodeId;
+    }
+    tree = syncSession(tree, parentId, session.id, session.turns);
     tree = attachStates(tree, session.id, session.adaptation?.states ?? []);
   }
   return tree;

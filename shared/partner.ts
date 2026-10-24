@@ -28,6 +28,8 @@ export interface PartnerBrief {
   photo?: string;
   /** '1': outgoing, she speaks first using something from your profile. */
   opens?: string;
+  /** A preset voice chosen for this profile; ignored unless it matches the profile's gender. */
+  voice?: string;
 }
 
 /** You, as your Ember profile shows you. Your date has read it. */
@@ -40,6 +42,18 @@ export interface UserProfile {
 function clip(value: unknown, max: number): string {
   if (typeof value !== 'string') return '';
   return value.replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
+/** Higgs TTS 3 preset voices by gender (docs.boson.ai/models/higgs-tts/voices). */
+const VOICES = { woman: ['chloe', 'nora', 'eleanor'], man: ['oliver', 'marcus', 'jake'] } as const;
+/** A voice matching the profile's gender: the requested one if it fits, else the same one every time for the same name; 'default' when unknown. */
+export function partnerVoice(name: string, gender: string, requested = ''): string {
+  const g = gender.toLowerCase();
+  const pool: readonly string[] | null = /\b(woman|female|girl|she)\b/.test(g) ? VOICES.woman : /\b(man|male|guy|he)\b/.test(g) ? VOICES.man : null;
+  if (!pool) return 'default';
+  if (pool.includes(requested)) return requested;
+  const hash = [...name.toLowerCase()].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+  return pool[hash % pool.length];
 }
 
 const validName = (name: string) => /^[\p{L}][\p{L}\s'.-]{0,39}$/u.test(name);
@@ -123,6 +137,7 @@ export function scenarioFromPartner(raw: unknown, user?: unknown): Scenario | nu
   return {
     id: partnerScenarioId(name),
     title: `First date with ${name}`,
+    ...(/^\/photos\/[\w-]+\.(jpg|jpeg|png|webp)$/.test(clip(body.photo, 120)) && { image: clip(body.photo, 120) }),
     setting: `An early evening first date in a quiet neighborhood café. You are ${who}${distance ? `, ${distance}` : ''}.${you
       ? ` You matched with ${you.name} on Ember, chatted briefly, and have read their dating profile, so you can bring up things from it the way someone who read it would.`
       : ''} You and the other person are getting to know each other as equals.`,
@@ -140,7 +155,7 @@ export function scenarioFromPartner(raw: unknown, user?: unknown): Scenario | nu
           : 'You are a little reserved at first: let them open the conversation, then warm up as it earns it.',
       ].filter(Boolean).join(' '),
       speakingStyle: 'Keep every reply to one or two short spoken sentences. You are speaking aloud, not writing: no lists, no markdown. Mention a hobby or your education when it fits naturally. A short follow-up is fine; do not interrogate.',
-      voice: 'default',
+      voice: partnerVoice(name, gender, clip(body.voice, 20)),
     },
   };
 }
@@ -169,6 +184,7 @@ export function briefFromSearch(search: string): PartnerBrief | null {
     surprise: query.get('surprise') || '',
     photo: query.get('photo') || '',
     opens: query.get('opens') || '',
+    voice: query.get('voice') || '',
   };
   return scenarioFromPartner(brief) ? brief : null;
 }
