@@ -4,7 +4,7 @@ Scope: hackathon MVP, one original and one alternative, backend independent of t
 
 ## Automated
 
-**265 tests across 23 files pass**, including all 228 original tests. Type checking and production build pass. Tests requiring local HTTP access run with loopback permission; sandbox-only loopback `EACCES` is not treated as an application regression.
+**266 tests across 23 files pass**, including all 228 original tests. Type checking and production build pass. Tests requiring local HTTP access run with loopback permission; sandbox-only loopback `EACCES` is not treated as an application regression.
 
 Focused additions cover exact prefix and checkpoint restoration (including concern memory and seeded draw position), independent branches, one branch across multiple sessions, immutable original history, interrupted/unheard/incomplete forks, authored-profile qualification, stale events/attachments, final-recording retries, superseded attempts, transaction rollback and SQLite reopen, ownership and legacy-route bypasses, idempotency conflicts, API serialization, replay ACKs and unsolicited audio, exact evidence/subject validation, deterministic weights/provisional/null results, highest-anchor support, branch consistency, actual shared/fork IDs, cache reuse/invalidation, timeout, explicit retry, malformed/empty/HTTP provider responses, and browser fetch receiver binding.
 

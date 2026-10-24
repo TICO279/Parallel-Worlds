@@ -1,7 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import { randomBytes, createHash } from 'node:crypto';
 import { z } from 'zod';
-import { conversationInput, forkInput, restoreInput, restoreEvent, unqualifiedRestore, type RestoreQualification, type Attachment } from '../shared/phase3';
+import { conversationInput, forkInput, restoreInput, restoreEvent, unqualifiedRestore, type RestoreQualification, type Attachment, type Restoration } from '../shared/phase3';
 import { LocalDatabase,DomainError,hash } from './persistence/database';
 import { BranchManager } from './branches';
 import { AnalysisService,DeepSeekAnalysis,MockAnalysis,type AnalysisProvider } from './analysis';
@@ -45,6 +45,12 @@ export function createPhase3(options:Phase3Options,store:ConversationStore,coord
   });
   router.get('/restorations/:id',(req,res)=>res.json(db.get('restore',String(req.params.id),res.locals.owner)));
   router.post('/restorations/:id/connection-attempts',async(req,res)=>{
+    z.strictObject({}).parse(req.body??{});
+    const op=db.get<Restoration>('restore',String(req.params.id),res.locals.owner),key=req.get('idempotency-key');
+    if(!key||!/^[a-zA-Z0-9:_-]{8,160}$/.test(key))throw new DomainError(400,'IDEMPOTENCY_REQUIRED','Provide an Idempotency-Key with 8–160 safe characters.');
+    if(!['prepared','connecting'].includes(op.status)||op.expiresAt<Date.now())throw new DomainError(409,'RESTORE_EXPIRED','Restore attempt expired or finished. Refresh before reconnecting.');
+    const receipt=db.sql.prepare('SELECT scope,request_hash FROM mutations WHERE owner=? AND key=?').get(res.locals.owner,key);
+    if(receipt)throw new DomainError(409,receipt.scope===`attempt:${req.params.id}`&&receipt.request_hash===hash({})?'CONNECTION_RETRY_REQUIRED':'IDEMPOTENCY_CONFLICT','Use a new attempt key to replace an uncertain connection.');
     // Network work stays outside the SQLite transaction. Never put a credential in the idempotency cache.
     const credential=await mintCredential(apiKey,fetcher);let executed=false;
     const result=db.mutate(res.locals.owner,req.get('idempotency-key'),`attempt:${req.params.id}`,{},()=>{

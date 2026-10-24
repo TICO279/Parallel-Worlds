@@ -6,9 +6,9 @@ import { ConversationStore } from '../server/store';
 import { Phase3Client,Phase3ApiError } from '../shared/phase3-client';
 import { unqualifiedRestore } from '../shared/phase3';
 describe('Phase 3 integration contract',()=>{
-  let server:Server,base:string,db:LocalDatabase;let sdk:Phase3Client;let cookie='';
+  let server:Server,base:string,db:LocalDatabase;let sdk:Phase3Client;let cookie='',credentialCalls=0;
   const transport:typeof fetch=async(url,options)=>{const response=await fetch(url,{...options,headers:{...options?.headers,...(cookie&&{cookie})}});cookie=response.headers.get('set-cookie')?.split(';')[0]??cookie;return response;};
-  beforeAll(async()=>{db=new LocalDatabase();const app=createApp({apiKey:'project-secret',fetcher:async()=>new Response(JSON.stringify({value:'bai-eph-fixture',expires_at:99999999})),
+  beforeAll(async()=>{db=new LocalDatabase();const app=createApp({apiKey:'project-secret',fetcher:async()=>{credentialCalls++;return new Response(JSON.stringify({value:'bai-eph-fixture',expires_at:99999999}));},
     store:new ConversationStore(undefined,db),phase3:{db,qualification:{...unqualifiedRestore,contextQualified:true,preForkRecall:true,postForkAbsent:true,noDuplicateQuestion:true,noUnsolicitedResponse:true}},dist:'__none__'});
     server=await new Promise(r=>{const s=app.listen(0,'127.0.0.1',()=>r(s));});base=`http://127.0.0.1:${(server.address() as {port:number}).port}`;sdk=new Phase3Client(base,transport);await sdk.bootstrap();});
   afterAll(async()=>{await new Promise<void>(r=>server.close(()=>r()));db.close();});
@@ -40,5 +40,11 @@ describe('Phase 3 integration contract',()=>{
     const c=await sdk.create('alex-first-date'),op=await sdk.restore(c.conversation,c.branch.id);await sdk.connectRestore(op.id,'connection-key');
     await expect(sdk.connectRestore(op.id,'connection-key')).rejects.toMatchObject({code:'CONNECTION_RETRY_REQUIRED'});
     const replacement=await sdk.connectRestore(op.id,'replacement-key');expect(replacement.attachment.status).toBe('preparing');
+  });
+  it('checks ownership before any ephemeral credential request',async()=>{
+    const c=await sdk.create('alex-first-date'),op=await sdk.restore(c.conversation,c.branch.id),stranger=new Phase3Client(base);
+    const before=credentialCalls;
+    await expect(stranger.connectRestore(op.id)).rejects.toMatchObject({status:404});
+    expect(credentialCalls).toBe(before);
   });
 });

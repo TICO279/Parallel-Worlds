@@ -10,7 +10,7 @@ suggestions, conservative communication evaluation, and a small two-path test ha
 at **[/phase3](http://127.0.0.1:5173/phase3)**. The separate mobile frontend consumes the
 [documented API and reusable TypeScript client](docs/phase3-api.md); this branch does
 not redesign that frontend. See [usage and scope](docs/phase3-mvp.md) and the
-[verification report](docs/phase3-verification.md). **265 tests pass**. Live Boson checks
+[verification report](docs/phase3-verification.md). **266 tests pass**. Live Boson checks
 cover text/generated-audio context restoration; DeepSeek checks cover suggestions and
 evidence-based assessments. Physical microphone rewind remains unverified.
 
