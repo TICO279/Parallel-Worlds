@@ -41,6 +41,15 @@ export function seedEvents(path: TreeNode[]): ProtocolEvent[] {
     type: 'message', id: `${SEED_PREFIX}${i}`, role: n.role,
     content: [{ type: n.role === 'user' ? 'input_text' : 'text', text: n.text }] } }));
 }
+/** One immutable path for both backend state restoration and the new Realtime session. */
+export function replayPlan(tree: ConversationTree, retryNodeId?: string) {
+  if (retryNodeId !== undefined && (!tree.nodes[retryNodeId] || tree.nodes[retryNodeId].role !== 'user'))
+    throw new Error('Practice must start before a user turn.');
+  const branch = retryNodeId === undefined ? tree : revertTo(tree, retryNodeId);
+  const history = branchHistory(pathTo(branch, branch.headId));
+  const events = seedEvents(pathTo(branch, branch.headId));
+  return { tree: branch, baseId: branch.headId, history, events };
+}
 /** Only complete, heard dialogue can become factual history in another branch. */
 export function branchHistory(path: TreeNode[]): BranchHistoryItem[] {
   return path.filter(n => n.status === 'complete' && !n.transcriptionFailed && n.text.trim()).map(n => ({

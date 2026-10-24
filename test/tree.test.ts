@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Turn } from '../shared/domain';
-import { childMap, emptyTree, isSeedEcho, pathTo, revertTo, seedEvents, syncSession } from '../shared/tree';
+import { childMap, emptyTree, isSeedEcho, pathTo, replayPlan, revertTo, seedEvents, syncSession } from '../shared/tree';
 const turn = (itemId: string, role: Turn['role'], text: string | null, startedAt: number, status: Turn['status'] = 'complete'): Turn =>
   ({ itemId, role, text, transcriptFinal: status === 'complete', status, order: 0, startedAt, updatedAt: startedAt });
 const texts = (tree: ReturnType<typeof emptyTree>) => pathTo(tree, tree.headId).map(n => n.text);
@@ -8,6 +8,21 @@ const texts = (tree: ReturnType<typeof emptyTree>) => pathTo(tree, tree.headId).
 const first = [turn('u1', 'user', 'How are you?', 1), turn('a1', 'assistant', 'Not bad.', 2),
   turn('u2', 'user', "I'm good as well.", 3), turn('a2', 'assistant', 'Glad to hear that.', 4)];
 describe('conversation tree', () => {
+  it('review retry and manual branching use exactly the same ancestor history across sessions', () => {
+    const original = syncSession(emptyTree(), null, 's1', first);
+    const fork = revertTo(original, 's1/u2');
+    const tree = syncSession(fork, fork.headId, 's2', [turn('u3', 'user', 'Different response', 5), turn('a3', 'assistant', 'Different reply', 6)]);
+    const reviewRetry = replayPlan(tree, 's1/u2');
+    const manualBranch = replayPlan(revertTo(tree, 's1/u2'));
+    expect(reviewRetry).toEqual(manualBranch);
+    expect(reviewRetry.history.map(n => n.text)).toEqual(['How are you?', 'Not bad.']);
+    expect(reviewRetry.events.map(e => (e.item as any).content[0].text)).toEqual(['How are you?', 'Not bad.']);
+    expect(Object.keys(reviewRetry.tree.nodes)).toHaveLength(6);
+    expect(tree.headId).toBe('s2/a3');
+    expect(replayPlan(tree, 's1/u1').history).toEqual([]);
+    expect(() => replayPlan(tree, 's1/a1')).toThrow();
+    expect(() => replayPlan(tree, 'missing')).toThrow();
+  });
   it('chains a session under its base and is idempotent across repeated syncs', () => {
     const once = syncSession(emptyTree(), null, 's1', first);
     expect(syncSession(once, null, 's1', first)).toEqual(once);

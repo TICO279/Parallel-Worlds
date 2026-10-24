@@ -107,8 +107,41 @@ describe('Higgs adapter: connection lifecycle', () => {
     const item = { type: 'conversation.item.create', item: { type: 'message', id: 'pwseed_0', role: 'user', content: [] } };
     const h = harness({ seed: () => [item] }); await h.client.connect(); h.socket.open();
     expect(h.socket.sent).toHaveLength(1);
-    h.socket.receive({ type: 'session.created' }); await h.client.toggleMic(); h.chunk('pcm');
+    h.socket.receive({ type: 'session.created' });
+    expect(h.client.connectionState).toBe('connecting');
+    expect(h.client.sendText('too early')).toBe(false);
+    h.socket.receive({ type: 'conversation.item.added', item: item.item });
+    await h.client.toggleMic(); h.chunk('pcm');
     expect(h.socket.sent.slice(1)).toEqual([item, { type: 'input_audio_buffer.append', audio: 'pcm' }]);
+    await h.client.disconnect();
+  });
+  it('pins replay before async bootstrap and acknowledges each item once before allowing a retry', async () => {
+    const user = { type: 'conversation.item.create', item: { type: 'message', id: 'pwseed_0', role: 'user', content: [{ type: 'input_text', text: 'Original opening' }] } };
+    const assistant = { type: 'conversation.item.create', item: { type: 'message', id: 'pwseed_1', role: 'assistant', content: [{ type: 'text', text: 'Original reply' }] } };
+    let seeds = [user, assistant];
+    const h = harness({ seed: () => seeds });
+    await h.client.connect(); seeds = []; h.socket.open(); h.socket.receive({ type: 'session.created' });
+    expect(h.socket.sent.slice(1)).toEqual([user]); expect(h.client.sendText('not ready')).toBe(false);
+    h.socket.receive({ type: 'conversation.item.added', item: user.item });
+    expect(h.socket.sent.slice(1)).toEqual([user, assistant]);
+    h.socket.receive({ type: 'conversation.item.added', item: user.item });
+    h.socket.receive({ type: 'session.updated' });
+    expect(h.client.connectionState).toBe('connecting');
+    h.socket.receive({ type: 'conversation.item.added', item: assistant.item });
+    expect(h.client.connectionState).toBe('ready');
+    expect(h.pipeline.judge).not.toHaveBeenCalled(); expect(h.pipeline.speak).not.toHaveBeenCalled();
+    expect(h.client.sendText('Replacement user line')).toBe(true);
+    expect(h.socket.sent.filter(e => e.type === 'response.create')).toHaveLength(1);
+    expect(h.socket.sent.some(e => e.type === 'conversation.item.delete')).toBe(false);
+    await h.client.disconnect();
+  });
+  it('ends a session that never acknowledges replay rather than accepting input into partial history', async () => {
+    vi.useFakeTimers();
+    const h = harness({ seed: () => [{ type: 'conversation.item.create', item: { id: 'pwseed_0', role: 'user' } }] });
+    await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
+    await vi.advanceTimersByTimeAsync(10001);
+    expect(h.opts.onError).toHaveBeenCalledWith(expect.stringContaining('replay was not acknowledged'));
+    expect(h.client.sendText('must not send')).toBe(false);
     await h.client.disconnect();
   });
   it('sends a typed turn only while the session is ready and the microphone is off', async () => {

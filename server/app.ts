@@ -9,6 +9,7 @@ import { adaptationConfig, type AdaptationConfig } from './adaptation/config';
 import type { AppraisalProvider } from './adaptation/providers';
 import type { Decider } from './adaptation/decisions';
 import { openSpeech } from './speech';
+import { registerDatingReview } from './datingReview';
 import { log } from './log';
 import { z } from 'zod';
 import { prepareBranch } from './branching';
@@ -25,7 +26,7 @@ const speechPayload = z.strictObject({ replyItemId: z.string().min(1).max(200), 
 // Do not accept arbitrary loopback ports or hosts that merely start with localhost.
 const localOrigins = new Set([3000, 5173, 5174].flatMap(port =>
   [`http://127.0.0.1:${port}`, `http://localhost:${port}`]));
-export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider; decider?: Decider; speechFetcher?: typeof fetch } = {}) {
+export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider; decider?: Decider; speechFetcher?: typeof fetch; reviewFetcher?: typeof fetch } = {}) {
   const app = express(); const store = options.store ?? new ConversationStore();
   const config = options.adaptation ?? adaptationConfig({});
   const coordinator = new AdaptationCoordinator(store, scenarios, config, options.provider, options.decider);
@@ -41,6 +42,8 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     next();
   });
   app.use(express.json({ limit: '2mb' }));
+  registerDatingReview(app, config.deepSeekKey ?? (config.decision?.provider === 'deepseek' ? config.decision.key : undefined),
+    config.decision?.provider === 'deepseek' ? config.decision.model : 'deepseek-flash', options.reviewFetcher);
   app.get('/api/health', (_req, res) => res.json({ ok: true, credentialsConfigured: Boolean(options.apiKey?.trim()) }));
   app.get('/api/scenarios', (_req, res) => res.json(scenarios));
   app.post('/api/sessions', async (req, res) => {

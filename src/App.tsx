@@ -2,9 +2,10 @@ import { APP_VERSION } from './version';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Conversation, ConversationTree, ProtocolEvent, Scenario, SessionBootstrap, StoredSession, TreeNode } from '../shared/domain';
 import { emptyConversation, orderedTurns, reduceTranscript } from '../shared/transcript';
-import { attachStates, branchHistory, checkpointAt, childMap, emptyTree, isSeedEcho, pathTo, revertTo, seedEvents, syncSession } from '../shared/tree';
+import { attachStates, checkpointAt, childMap, emptyTree, isSeedEcho, pathTo, revertTo, replayPlan, syncSession } from '../shared/tree';
 import { HiggsClient, type Activity, type ConnectionState } from './realtime/HiggsClient';
 import { api, SessionRecorder } from './recording';
+import { DatingReview } from './DatingReview';
 import { AdaptivePanel } from './AdaptivePanel';
 import type { AdaptationData, JudgeResult, LatencyRecord } from '../shared/characterState';
 import { loadTrees, saveTrees } from './treeStorage';
@@ -19,10 +20,10 @@ export function App() {
   const [error, setError] = useState<string | null>(null); const [recording, setRecording] = useState<string | null>(null);
   const [session, setSession] = useState<StoredSession | null>(null); const [confirmRestart, setConfirmRestart] = useState(false);
   const [trees, setTrees] = useState<Record<string, ConversationTree>>(loadTrees); const [selectedLine, setSelectedLine] = useState<string | null>(null);
-  const treesRef = useRef(trees); treesRef.current = trees;
+  const [reviewJump, setReviewJump] = useState<{ id: string } | null>(null);
   // The tree node that was HEAD when the current session started; its live turns hang under it.
   const live = useRef<{ scenarioId: string; baseId: string | null; sessionId?: string } | null>(null);
-  const seeds = useRef<ProtocolEvent[]>([]);
+  const replay = useRef<ReturnType<typeof replayPlan> | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null); const [exporting, setExporting] = useState(false);
   const [draft, setDraft] = useState('');
   const selectedRef = useRef(selected); selectedRef.current = selected;
@@ -40,12 +41,14 @@ export function App() {
       .catch(() => { if (mounted) setError('Cannot reach the local server. Start the application with pnpm dev.'); });
     const c = new HiggsClient({
       bootstrap: async signal => {
+        const plan = replay.current; const scenarioId = selectedRef.current;
+        if (!plan) throw new Error('Conversation history is not prepared.');
         const previous = recorder.current;
-        if (previous && !previous.synced) { await previous.flush(); if (!previous.synced) throw new Error('The previous conversation is still recording. Wait for it to synchronize, then start the branch again.'); }
-        return api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: 'adaptive',
-          history: branchHistory(pathTo(treesRef.current[selectedRef.current] ?? emptyTree(), live.current?.baseId ?? null)) }) });
+        if (previous) await synced(previous, signal);
+        return api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId, mode: 'adaptive',
+          history: plan.history }) });
       },
-      seed: () => seeds.current,
+      seed: () => replay.current?.events ?? [],
       pipeline: {
         judge: async (turnId, signal) => {
           const id = sessionIdRef.current; const r = recorder.current; if (!id || !r) throw new Error('No session.');
@@ -132,17 +135,17 @@ export function App() {
   }, [session?.id, connection]);
   useEffect(() => { const timer = setTimeout(() => setStorageWarning(saveTrees(trees) ? null : 'Browser storage is unavailable or full. Export JSON to keep this conversation tree.'), 400); return () => clearTimeout(timer); }, [trees]);
   const tree = trees[selected] ?? emptyTree(); const path = pathTo(tree, tree.headId);
-  useEffect(() => { if (path.length) transcriptEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [trees]);
+  useEffect(() => { if (path.length && !selectedLine) transcriptEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [trees]);
   const scenario = scenarios.find(s => s.id === selected); const sessionScenario = scenarios.find(s => s.id === session?.scenarioId) ?? scenario;
   const busy = connection === 'connecting' || connection === 'ready' || connection === 'closing';
   // HEAD has children only after a revert: the next session starts a sibling branch.
   const atFork = !busy && (childMap(tree).get(tree.headId)?.length ?? 0) > 0;
   const startLabel = !Object.keys(tree.nodes).length ? 'Start conversation' : atFork ? 'Start new branch' : 'Continue conversation';
-  function start() {
+  function start(startTree = tree) {
     if (client.current && ['ready', 'connecting', 'closing'].includes(client.current.connectionState)) return;
     setError(null); setRecording(null); setSelectedLine(null); setSession(null); setAdaptation(null); setLatency(null); setPollError(null); setAdaptationNotice(null);
-    live.current = { scenarioId: selected, baseId: tree.headId };
-    seeds.current = seedEvents(path);
+    const plan = replayPlan(startTree); replay.current = plan;
+    live.current = { scenarioId: selected, baseId: plan.baseId };
     void client.current?.connect();
   }
   function sendDraft(event: FormEvent) {
@@ -150,6 +153,36 @@ export function App() {
     if (client.current?.sendText(draft)) setDraft('');
   }
   function revert(id: string) { setTrees(t => ({ ...t, [selected]: revertTo(t[selected] ?? emptyTree(), id) })); setSelectedLine(null); }
+  function viewReviewTurn(id: string, headId: string) {
+    if (busy || !tree.nodes[id] || !tree.nodes[headId]) return;
+    setTrees(t => ({ ...t, [selected]: { ...t[selected], headId } })); setSelectedLine(null); setReviewJump({ id });
+  }
+  useEffect(() => {
+    if (!reviewJump) return;
+    const element = document.getElementById(`turn-${reviewJump.id}`);
+    if (!element) return;
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    element.focus({ preventScroll: true });
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const color = 'rgba(142, 155, 128, 0.23)';
+    const animation = element.animate(reduced
+      ? [{ backgroundColor: color }, { backgroundColor: color }]
+      : [{ backgroundColor: 'transparent' }, { backgroundColor: color, offset: 0.4 }, { backgroundColor: 'transparent' }],
+      { duration: reduced ? 1600 : 850, iterations: reduced ? 1 : 2 });
+    return () => animation.cancel();
+  }, [reviewJump]);
+  function practiceReviewTurn(id: string) {
+    if (busy || tree.nodes[id]?.role !== 'user' || tree.nodes[id]?.status !== 'complete') return;
+    const next = replayPlan(tree, id).tree;
+    setTrees(t => ({ ...t, [selected]: next })); setDraft(''); start(next);
+  }
+  useEffect(() => {
+    if (selectedLine) {
+      const element = document.getElementById(`turn-${selectedLine}`);
+      element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element?.querySelector<HTMLButtonElement>('.turn-text')?.focus({ preventScroll: true });
+    }
+  }, [selectedLine, tree.headId]);
   function clearTree() { setTrees(t => { const { [selected]: _removed, ...rest } = t; return rest; }); setSelectedLine(null);
     if (session?.scenarioId === selected) { setSession(null); setAdaptation(null); setLatency(null); setAdaptationNotice(null); setPollError(null); } }
   /** Erase this scenario's conversation (tree, transcript, scores) and return to a fresh start. Asks for a second click. */
@@ -158,7 +191,7 @@ export function App() {
     setConfirmRestart(false);
     // End a live conversation first so its last events are recorded before everything is erased.
     if (client.current && ['ready', 'connecting', 'closing'].includes(client.current.connectionState)) await client.current.disconnect();
-    state.current = emptyConversation(); live.current = null; seeds.current = [];
+    state.current = emptyConversation(); live.current = null; replay.current = null;
     clearTree(); setSession(null); setAdaptation(null); setLatency(null); setAdaptationNotice(null); setPollError(null);
     setDraft(''); setError(null); setRecording(null);
   }
@@ -233,7 +266,7 @@ export function App() {
                 : <>{path.map(t => {
                   // Only your own lines can be reverted, and only once the conversation has ended.
                   const revertable = t.role === 'user' && Boolean(t.text) && !busy; const open = selectedLine === t.id;
-                  return <article className={`turn ${t.role} ${open ? 'selected' : ''}`} key={t.id}><div className="turn-heading"><strong>{t.role === 'user' ? 'YOU' : name.toUpperCase()}</strong><time>{new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div>
+                  return <article id={`turn-${t.id}`} tabIndex={-1} className={`turn ${t.role} ${open ? 'selected' : ''}`} key={t.id}><div className="turn-heading"><strong>{t.role === 'user' ? 'YOU' : name.toUpperCase()}</strong><time>{new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time></div>
                     {revertable ? <button className="turn-text" aria-expanded={open} title="Revert to this point" onClick={() => setSelectedLine(open ? null : t.id)}>{lineText(t)}</button> : <p>{lineText(t)}</p>}
                     {open && <div className="revert-row"><button className="revert-button" onClick={() => revert(t.id)}>⟲ Revert to this point</button><small>{name}'s line before this stays. You say something new from there.</small></div>}
                     {t.status === 'interrupted' && <small className="turn-note">Interrupted · {(t.playedMs ?? 0).toFixed(0)} ms played · Generated text may include unheard words.</small>}{t.status === 'incomplete' && <small className="turn-note">{t.transcriptionFailed ? 'Speech occurred, but its transcript failed.' : 'Session ended before this turn was finalized.'}</small>}</article>;
@@ -249,6 +282,7 @@ export function App() {
             <div className="transcript-footer"><span>{recording ?? (session ? 'Recorded in local server memory' : 'Transcripts appear here as you talk')}</span><span>◌</span></div>
           </section>
         </div>
+        {selected === 'alex-first-date' && <DatingReview key={`${selected}:${Object.keys(tree.nodes).length ? 'saved' : 'empty'}`} path={path} busy={busy} onView={viewReviewTurn} onPractice={practiceReviewTurn}/>}
         <AdaptivePanel character={name} data={shownSession && !viewingSavedPath ? adaptation : null} latency={shownSession && !viewingSavedPath ? latency : null}
           connected={connection === 'ready'} preview={viewingSavedPath ? checkpointAt(path) : undefined}
           restored={Boolean(shownSession?.branch?.restoredFrom)}

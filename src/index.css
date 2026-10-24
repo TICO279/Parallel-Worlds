@@ -7,3 +7,12 @@
 .restart-button{display:flex;gap:10px;justify-content:center;align-items:center;width:100%;margin-top:12px;padding:12px;border:1.5px solid #c9b48f;border-radius:5px;background:#fbf6ec;color:#6e5532;font-size:12px;font-weight:600}.restart-button:hover:not(:disabled){background:#f3eadb;border-color:#af8352}.restart-button.confirm{background:#f6e3d6;border-color:#c0705a;color:#7c3d26}
 .relationship-metrics{grid-template-columns:repeat(5,1fr)}@media(max-width:900px){.relationship-metrics{grid-template-columns:repeat(3,1fr)}}
 .app-version{font-size:9px;font-weight:700;letter-spacing:.5px;color:#dce7cb}
+
+/* Post-conversation dating practice review. */
+.dating-review{margin:28px 0;padding:28px;background:var(--surface,#fffdf8);border:1px solid #dedbd3;border-radius:16px}
+.review-header{display:flex;justify-content:space-between;align-items:center;gap:24px}.review-header h2{margin:8px 0;font-size:26px}.review-header p,.review-note{color:#66675f;font-size:14px;line-height:1.65}.review-header button{flex-shrink:0}
+.review-results{margin-top:24px}.review-strength{padding:22px;background:#eef2e9;border-radius:12px;margin:20px 0}.review-strength h3,.review-suggestion h3{margin:10px 0;font-size:20px}.review-strength blockquote{margin:12px 0;font-style:italic}
+.review-suggestions{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}.review-suggestion{padding:22px;border:1px solid #dedbd3;border-radius:12px;background:#fff}.review-suggestion p{line-height:1.65;font-size:15px}.review-quote{display:block;text-align:left;background:#f6f4ee;border:0;border-radius:8px;padding:14px;width:100%;font:inherit;font-size:15px;line-height:1.6;color:inherit;cursor:pointer}.review-quote span{display:block;font-size:12px;margin-top:8px;text-decoration:underline}.review-quote:focus-visible{outline:2px solid #566b4a;outline-offset:3px}.review-alternative{border-left:3px solid #8e9b80;padding-left:14px;margin:18px 0}.review-alternative b{font-size:12px}.review-suggestion small{display:block;margin-top:12px;line-height:1.5;color:#66675f}.review-error{color:#943d31}.turn:focus{outline:none}button:disabled{cursor:not-allowed}
+@media(max-width:700px){.dating-review{padding:20px}.review-header{align-items:flex-start;flex-direction:column}.review-header button{white-space:normal}}
+
+.review-strength p{font-size:15px;line-height:1.65;margin:12px 0}.review-link{display:inline-block;border:0;background:none;color:inherit;text-decoration:underline;font:inherit;font-size:14px;padding:4px 0;margin-top:8px}
