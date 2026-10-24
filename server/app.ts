@@ -48,7 +48,7 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     if (!['saved', 'neutral', 'live'].includes(speechStyleSource)) throw new ApiError(400, 'Choose a valid delivery source.');
     if (speechMode === 'tts' && speechStyleSource === 'live' && (options.adaptation?.provider ?? 'mock') === 'mock' && !options.provider)
       throw new ApiError(409, 'Live delivery needs APPRAISAL_PROVIDER=deepseek (or openai) and its project key. Restart the backend after changing .env.');
-    const mode = speechMode === 'tts' ? speechStyleSource === 'live' ? 'adaptive' : 'static' : req.body?.mode ?? 'static';
+    const mode = speechMode === 'tts' ? speechStyleSource === 'live' ? 'adaptive' : 'static' : req.body?.mode ?? 'adaptive';
     if (mode !== 'static' && mode !== 'adaptive') throw new ApiError(400, 'Choose static or adaptive mode.');
     const resumed = prepareBranch(req.body?.history, scenario, store, mode === 'adaptive');
     const credential = await mintCredential(options.apiKey, options.fetcher);

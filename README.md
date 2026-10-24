@@ -9,10 +9,10 @@ A local voice-conversation lab powered by Boson Higgs Realtime. Phase 1 includes
 Alex's first date and Morgan's mock interview, microphone streaming, server VAD,
 interruptions, ordered transcripts, and JSON export.
 
-**Phase 2:** Optional Adaptive mode adds mock or opt-in live appraisal (DeepSeek Flash
+**Phase 2:** Every conversation is adaptive: mock or opt-in live appraisal (DeepSeek Flash
 preferred), versioned character state,
-asynchronous instruction updates and a development panel. Static mode remains the
-default. See [Phase 2 configuration, live evidence and limitations](docs/phase2.md).
+asynchronous instruction updates and a development panel. The page no longer offers
+Static mode; the API still accepts `mode: "static"` for scripts and evaluations. See [Phase 2 configuration, live evidence and limitations](docs/phase2.md).
 The [tone and realism baseline](docs/realism-implementation.md) adds grounded appraisal,
 mixed reactions, bounded concern memory and saved instruction context. Current validation:
 **184 automated tests pass**, including all 42 baseline tests;

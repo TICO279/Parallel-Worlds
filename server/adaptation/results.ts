@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { appraisalSchema, realismAppraisalSchema, tokenUsageSchema, type TokenUsage } from '../../shared/characterState';
+import { log } from '../log';
 
 // Request-local metadata keeps the provider interface unchanged and avoids shared
 // "last usage" state when different sessions appraise concurrently.
@@ -35,17 +36,24 @@ export function parseAppraisal(text: unknown, telemetry: AppraisalTelemetry, req
   catch { throw new AppraisalProviderError('Appraisal provider returned invalid structured output.', telemetry); }
 }
 export async function requestJson(fetcher: typeof fetch, url: string, key: string, body: unknown, signal: AbortSignal): Promise<any> {
+  const host = new URL(url).host; const model = (body as { model?: unknown })?.model; const started = performance.now();
+  const elapsed = () => `${Math.round(performance.now() - started)} ms`;
   try {
     signal.throwIfAborted();
+    log('appraisal', `→ POST ${host}${typeof model === 'string' ? ` model=${model}` : ''}`);
     const response = await fetcher(url, { method: 'POST', signal,
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    log('appraisal', `← ${host} HTTP ${response.status} in ${elapsed()}`);
     if (!response.ok) throw new AppraisalProviderError(`Appraisal provider rejected the request (HTTP ${response.status}).`);
     const data: unknown = await response.json();
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw new AppraisalProviderError('Appraisal provider returned an invalid API response.');
     return data;
   } catch (error) {
-    if (signal.aborted) throw new AppraisalProviderError('Appraisal timed out or was cancelled.');
+    if (signal.aborted) { log('appraisal', `✗ ${host} timed out or cancelled after ${elapsed()}`); throw new AppraisalProviderError('Appraisal timed out or was cancelled.'); }
     if (error instanceof AppraisalProviderError) throw error;
+    // Only the error code (e.g. ENOTFOUND, ECONNREFUSED), never messages that could echo the request.
+    const code = (error as { cause?: { code?: unknown } })?.cause?.code;
+    log('appraisal', `✗ ${host} unreachable after ${elapsed()}${typeof code === 'string' ? ` (${code})` : ''}`);
     // Never propagate upstream bodies, fetch errors or JSON parser excerpts.
     throw new AppraisalProviderError('Appraisal provider unavailable or returned an invalid API response.');
   }

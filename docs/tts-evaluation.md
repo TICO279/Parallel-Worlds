@@ -18,16 +18,14 @@ measuring this baseline. `SPEECH_OUTPUT=realtime` restores the existing audio pa
 The product keeps its original conversation interface. Voice source, voice ID, task
 description, JSON review panel and timing readouts are not rendered in the app.
 Use server-side `TTS_STYLE_SOURCE=live|saved|neutral` and `TTS_VOICE=default` (or a
-valid voice ID). The original Conversation mode control remains: Adaptive uses the
-configured source, Static uses neutral delivery. The server's non-secret health
-configuration initializes Adaptive when a non-neutral TTS source is configured.
+valid voice ID). Conversations use the configured source without a mode selector, matching main's adaptive-only interface. Saved and neutral TTS bypass live appraisal.
 The entry point defaults to tts/live/default; .env can override these settings.
 
 ## Live appraisal and review
 
 Set APPRAISAL_PROVIDER=deepseek, DEEPSEEK_API_KEY, APPRAISAL_MODEL=deepseek-flash and
 APPRAISAL_TIMEOUT_MS=6000 in the local .env, then restart the backend. Set
-SPEECH_OUTPUT=tts and TTS_STYLE_SOURCE=live, and use Adaptive conversation mode.
+SPEECH_OUTPUT=tts and TTS_STYLE_SOURCE=live, and start a conversation.
 Mock configuration is rejected for live delivery.
 OpenAI is also supported via the existing explicit project opt-in; other providers need an adapter.
 
@@ -65,7 +63,7 @@ are historical fictional examples, not evaluations of the current user's message
 Reply 1 is neutral. At the start of user turn N, a style snapshot is frozen from saved
 example N-1; once examples run out, the final example is held. Later changes cannot
 change that reply's frozen style. A new session or branch restarts this demo sequence.
-Missing or invalid examples fall back to neutral. Static conversation mode disables the
+Missing or invalid examples fall back to neutral. `TTS_STYLE_SOURCE=neutral` disables the
 saved examples. The session export records source, original example message and style.
 
 The compiler uses tone, expression, move and uncertainty only. Free-form interpretation,
@@ -93,7 +91,7 @@ With SPEECH_OUTPUT=realtime, the original Adaptive mode retains its wording-guid
 1. Start with microphone OFF and type three short fictional messages. Check that the
    export records neutral first delivery and saved-example provenance on later replies.
    Alex's saved examples largely test boundaries; Morgan's largely test interview claims.
-2. Compare the sound in Static mode using the same voice. Is the restrained
+2. Compare the sound with `TTS_STYLE_SOURCE=neutral` using the same voice. Is the restrained
    delivery too flat? Is the voice itself pleasant? Try another accessible voice ID.
    Wording varies between conversations; a controlled same-script A/B needs saved audio
    or a dedicated audition tool and is not established by this interactive comparison.

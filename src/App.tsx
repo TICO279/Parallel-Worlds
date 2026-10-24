@@ -1,3 +1,4 @@
+import { APP_VERSION } from './version';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Conversation, ConversationTree, ProtocolEvent, Scenario, SessionBootstrap, StoredSession, TreeNode } from '../shared/domain';
 import { emptyConversation, orderedTurns, reduceTranscript } from '../shared/transcript';
@@ -16,7 +17,7 @@ export function App() {
   const [connection, setConnection] = useState<ConnectionState>('idle'); const [activity, setActivity] = useState<Activity>('idle');
   const [mic, setMic] = useState(false); const [level, setLevel] = useState(0); const [micBusy, setMicBusy] = useState(false);
   const [error, setError] = useState<string | null>(null); const [recording, setRecording] = useState<string | null>(null);
-  const [session, setSession] = useState<StoredSession | null>(null);
+  const [session, setSession] = useState<StoredSession | null>(null); const [confirmRestart, setConfirmRestart] = useState(false);
   const [trees, setTrees] = useState<Record<string, ConversationTree>>(loadTrees); const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const treesRef = useRef(trees); treesRef.current = trees;
   // The tree node that was HEAD when the current session started; its live turns hang under it.
@@ -30,8 +31,7 @@ export function App() {
   const speechSourceRef = useRef(speechSource);
   const [voice, setVoice] = useState('default'); const voiceRef = useRef(voice); voiceRef.current = voice;
   const selectedRef = useRef(selected); selectedRef.current = selected;
-  const [mode, setMode] = useState<'static' | 'adaptive'>('static'); const modeRef = useRef(mode); modeRef.current = mode;
-  speechSourceRef.current = speechMode === 'tts' && mode === 'static' ? 'neutral' : speechSource;
+  speechSourceRef.current = speechSource;
   const [adaptation, setAdaptation] = useState<AdaptationData | null>(null);
   const adaptationRef = useRef<AdaptationData | null>(null);
   const [latency, setLatency] = useState<LatencyRecord | null>(null); const [adaptationNotice, setAdaptationNotice] = useState<string | null>(null);
@@ -45,8 +45,7 @@ export function App() {
     void Promise.all([api<Scenario[]>('/api/scenarios'), api<{ credentialsConfigured: boolean;
       speech?: { mode: 'realtime' | 'tts'; source: 'saved' | 'neutral' | 'live'; voice: string } }>('/api/health')])
       .then(([list, health]) => { if (mounted) { setScenarios(list); setConfigured(health.credentialsConfigured);
-        if (health.speech) { setSpeechMode(health.speech.mode); setSpeechSource(health.speech.source); setVoice(health.speech.voice);
-          if (health.speech.mode === 'tts' && health.speech.source !== 'neutral') setMode('adaptive'); }
+        if (health.speech) { setSpeechMode(health.speech.mode); setSpeechSource(health.speech.source); setVoice(health.speech.voice); }
       } })
       .catch(() => { if (mounted) setError('Cannot reach the local server. Start the application with pnpm dev.'); });
     const c = new HiggsClient({
@@ -66,7 +65,7 @@ export function App() {
       bootstrap: async signal => {
         const previous = recorder.current;
         if (previous && !previous.synced) { await previous.flush(); if (!previous.synced) throw new Error('The previous conversation is still recording. Wait for it to synchronize, then start the branch again.'); }
-        return api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: modeRef.current, speechMode: speechModeRef.current, speechStyleSource: speechSourceRef.current,
+        return api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: 'adaptive', speechMode: speechModeRef.current, speechStyleSource: speechSourceRef.current,
           history: branchHistory(pathTo(treesRef.current[selectedRef.current] ?? emptyTree(), live.current?.baseId ?? null)) }) });
       },
       seed: () => seeds.current,
@@ -157,6 +156,16 @@ export function App() {
   function revert(id: string) { setTrees(t => ({ ...t, [selected]: revertTo(t[selected] ?? emptyTree(), id) })); setSelectedLine(null); }
   function clearTree() { setTrees(t => { const { [selected]: _removed, ...rest } = t; return rest; }); setSelectedLine(null);
     if (session?.scenarioId === selected) { setSession(null); setAdaptation(null); setLatency(null); setAdaptationNotice(null); setPollError(null); } }
+  /** Erase this scenario's conversation (tree, transcript, scores) and return to a fresh start. Asks for a second click. */
+  async function startOver() {
+    if (!confirmRestart) { setConfirmRestart(true); return; }
+    setConfirmRestart(false);
+    // End a live conversation first so its last events are recorded before everything is erased.
+    if (client.current && ['ready', 'connecting', 'closing'].includes(client.current.connectionState)) await client.current.disconnect();
+    state.current = emptyConversation(); live.current = null; seeds.current = [];
+    clearTree(); setSession(null); setAdaptation(null); setLatency(null); setAdaptationNotice(null); setPollError(null);
+    setDraft(''); setError(null); setRecording(null);
+  }
   async function exportConversation() {
     if (!Object.keys(tree.nodes).length && !session) return;
     setExporting(true);
@@ -185,13 +194,12 @@ export function App() {
       <a className="brand" href="/" aria-label="Parallel Worlds home"><span className="brand-symbol">◒</span><span>parallel<br/>worlds<span className="brand-period">.</span></span></a>
       <div className="sidebar-intro"><span className="eyebrow">THE CONVERSATION LAB</span><p>A different connection.<br/>A world of possibility.</p></div>
       <div className="scenario-label"><span className="eyebrow">CHOOSE YOUR SCENARIO</span><span>01 — 02</span></div>
-      <label className="mode-selector">Conversation mode<select value={mode} disabled={busy} onChange={e => setMode(e.target.value as 'static' | 'adaptive')}><option value="static">Static · original behavior</option><option value="adaptive">Adaptive · future responses</option></select></label>
       <nav aria-label="Scenarios" className="scenario-list">{scenarios.map((s, i) => <button key={s.id} disabled={busy} aria-pressed={selected === s.id}
         className={`scenario-option ${selected === s.id ? 'selected' : ''}`} onClick={() => { setSelected(s.id); setSelectedLine(null); }}>
         <span className="scenario-number">0{i + 1}</span><span><strong>{s.title}</strong><small>{i === 0 ? 'Connection & curiosity' : 'Clarity & confidence'}</small></span><span className="option-arrow">↗</span>
       </button>)}</nav>
       <div className="sidebar-note"><span className="small-orbit">✳</span><p>Every conversation starts<br/>with being present.</p></div>
-      <footer className="sidebar-footer"><span className="status-dot"/> PHASE 02 <span>ADAPTIVE CHARACTERS</span></footer>
+      <footer className="sidebar-footer"><span className="status-dot"/> <span className="app-version">{APP_VERSION}</span> <span>ADAPTIVE CHARACTERS</span></footer>
     </aside>
     <main>
       <header className="topbar"><span>EXPERIENCE / <b>LIVE CONVERSATION</b></span><span className={`connection-pill ${connection === 'ready' ? 'connected' : ''}`}><span className="status-dot"/>{connection === 'ready' ? 'Connected' : connection === 'connecting' ? 'Connecting…' : 'Not connected'}</span></header>
@@ -214,6 +222,11 @@ export function App() {
                 : path.length ? `${name} remembers the conversation so far. Type, or enable your microphone, to carry on.` : 'Type a message, or enable your microphone and say hello.'
                 : atFork ? `The completed dialogue up to this point will be replayed. Say something different this time.`
                 : path.length ? 'Click one of your own lines to revert to that point.' : 'A live voice conversation, at your own pace.'}</p>
+              {/* Always visible; disabled until there is something to erase. */}
+              <button className={`restart-button ${confirmRestart ? 'confirm' : ''}`}
+                disabled={connection === 'closing' || !(Object.keys(tree.nodes).length > 0 || busy || shownSession)}
+                title="Erase this conversation and start fresh" onClick={() => void startOver()} onBlur={() => setConfirmRestart(false)}>
+                {confirmRestart ? `Click again to erase this conversation with ${name} and start over` : '↺ Start over'}</button>
             </div>
           </section>
           <section className={`transcript-card ${Object.keys(tree.nodes).length ? 'has-tree' : ''}`} aria-labelledby="transcript-title">
@@ -241,7 +254,7 @@ export function App() {
           </section>
         </div>
         {speechMode !== 'tts' && <AdaptivePanel character={name} data={shownSession && !viewingSavedPath ? adaptation : null} latency={shownSession && !viewingSavedPath ? latency : null}
-          mode={mode} connected={connection === 'ready'} preview={viewingSavedPath ? checkpointAt(path) : undefined}
+          connected={connection === 'ready'} preview={viewingSavedPath ? checkpointAt(path) : undefined}
           restored={Boolean(shownSession?.branch?.restoredFrom)}
           notice={viewingSavedPath ? 'Saved branch position. Start a conversation to restore its server checkpoint; if unavailable, the app will explicitly report a score reset.' : pollError ?? adaptationNotice}/>}
         <footer className="workspace-footer"><span>Stay curious. There is no script.</span><span>POWERED BY BOSON HIGGS REALTIME</span></footer>
