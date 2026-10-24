@@ -24,9 +24,16 @@ export function App() {
   const seeds = useRef<ProtocolEvent[]>([]);
   const [configured, setConfigured] = useState<boolean | null>(null); const [exporting, setExporting] = useState(false);
   const [draft, setDraft] = useState('');
+  const [speechMode, setSpeechMode] = useState<'realtime' | 'tts'>('realtime');
+  const speechModeRef = useRef(speechMode); speechModeRef.current = speechMode;
+  const [speechSource, setSpeechSource] = useState<'saved' | 'neutral' | 'live'>('live');
+  const speechSourceRef = useRef(speechSource);
+  const [voice, setVoice] = useState('default'); const voiceRef = useRef(voice); voiceRef.current = voice;
   const selectedRef = useRef(selected); selectedRef.current = selected;
   const [mode, setMode] = useState<'static' | 'adaptive'>('static'); const modeRef = useRef(mode); modeRef.current = mode;
+  speechSourceRef.current = speechMode === 'tts' && mode === 'static' ? 'neutral' : speechSource;
   const [adaptation, setAdaptation] = useState<AdaptationData | null>(null);
+  const adaptationRef = useRef<AdaptationData | null>(null);
   const [latency, setLatency] = useState<LatencyRecord | null>(null); const [adaptationNotice, setAdaptationNotice] = useState<string | null>(null);
   const [pollError, setPollError] = useState<string | null>(null); const [storageWarning, setStorageWarning] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -35,19 +42,37 @@ export function App() {
   const transcriptEnd = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let mounted = true;
-    void Promise.all([api<Scenario[]>('/api/scenarios'), api<{ credentialsConfigured: boolean }>('/api/health')])
-      .then(([list, health]) => { if (mounted) { setScenarios(list); setConfigured(health.credentialsConfigured); } })
+    void Promise.all([api<Scenario[]>('/api/scenarios'), api<{ credentialsConfigured: boolean;
+      speech?: { mode: 'realtime' | 'tts'; source: 'saved' | 'neutral' | 'live'; voice: string } }>('/api/health')])
+      .then(([list, health]) => { if (mounted) { setScenarios(list); setConfigured(health.credentialsConfigured);
+        if (health.speech) { setSpeechMode(health.speech.mode); setSpeechSource(health.speech.source); setVoice(health.speech.voice);
+          if (health.speech.mode === 'tts' && health.speech.source !== 'neutral') setMode('adaptive'); }
+      } })
       .catch(() => { if (mounted) setError('Cannot reach the local server. Start the application with pnpm dev.'); });
     const c = new HiggsClient({
+      tts: {
+        enabled: () => speechModeRef.current === 'tts',
+        prepare: (turnNumber, signal) => api(`/api/sessions/${sessionIdRef.current}/tts/prepare`, {
+          method: 'POST', signal, body: JSON.stringify({ turnNumber, source: speechSourceRef.current,
+            ...(speechSourceRef.current === 'live' && { maxStateVersion: adaptationRef.current?.states.at(-1)?.version ?? 0 }) }) }),
+        synthesize: async (text, itemId, snapshot, signal) => {
+          const response = await fetch(`/api/sessions/${sessionIdRef.current}/tts`, { method: 'POST', signal,
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, itemId, snapshotId: snapshot.id, voice: voiceRef.current }) });
+          if (!response.ok) throw new Error('Speech request failed.');
+          return response.arrayBuffer();
+        },
+        onStyle: () => {},
+      },
       bootstrap: async signal => {
         const previous = recorder.current;
         if (previous && !previous.synced) { await previous.flush(); if (!previous.synced) throw new Error('The previous conversation is still recording. Wait for it to synchronize, then start the branch again.'); }
-        return api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: modeRef.current,
+        return api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: modeRef.current, speechMode: speechModeRef.current, speechStyleSource: speechSourceRef.current,
           history: branchHistory(pathTo(treesRef.current[selectedRef.current] ?? emptyTree(), live.current?.baseId ?? null)) }) });
       },
       seed: () => seeds.current,
       onBootstrap: data => {
         state.current = emptyConversation(); setSession(data.session);
+        adaptationRef.current = data.session.adaptation ?? null;
         if (live.current) live.current.sessionId = data.session.id;
         sessionIdRef.current = data.session.id; setAdaptation(data.session.adaptation ?? null); setLatency(null); setPollError(null); setAdaptationNotice(data.session.branch?.notice ?? null);
         const r = new SessionRecorder(data.session.id, message => { if (recorder.current === r && mounted) setRecording(message); });
@@ -100,9 +125,10 @@ export function App() {
       load: signal => api(`/api/sessions/${session.id}/adaptation`, { signal }),
       onData: data => {
         setAdaptation(data); setPollError(null);
+        adaptationRef.current = data;
         setTrees(t => { const current = t[session.scenarioId]; if (!current) return t;
           const next = attachStates(current, session.id, data.states); return next === current ? t : { ...t, [session.scenarioId]: next }; });
-        if (connection === 'ready') client.current?.queueInstructions(data.prepared.version, data.prepared.instructions,
+        if (connection === 'ready' && session.speechMode !== 'tts') client.current?.queueInstructions(data.prepared.version, data.prepared.instructions,
           { persistentInstructions: data.prepared.persistentInstructions ?? data.prepared.instructions, triggerTurnId: data.prepared.triggerTurnId });
       },
       onError: () => setPollError('Scores could not be refreshed. The last saved values are shown; reconnect after restoring the backend.'),
@@ -214,10 +240,10 @@ export function App() {
             <div className="transcript-footer"><span>{recording ?? (session ? 'Recorded in local server memory' : 'Transcripts appear here as you talk')}</span><span>◌</span></div>
           </section>
         </div>
-        <AdaptivePanel character={name} data={shownSession && !viewingSavedPath ? adaptation : null} latency={shownSession && !viewingSavedPath ? latency : null}
+        {speechMode !== 'tts' && <AdaptivePanel character={name} data={shownSession && !viewingSavedPath ? adaptation : null} latency={shownSession && !viewingSavedPath ? latency : null}
           mode={mode} connected={connection === 'ready'} preview={viewingSavedPath ? checkpointAt(path) : undefined}
           restored={Boolean(shownSession?.branch?.restoredFrom)}
-          notice={viewingSavedPath ? 'Saved branch position. Start a conversation to restore its server checkpoint; if unavailable, the app will explicitly report a score reset.' : pollError ?? adaptationNotice}/>
+          notice={viewingSavedPath ? 'Saved branch position. Start a conversation to restore its server checkpoint; if unavailable, the app will explicitly report a score reset.' : pollError ?? adaptationNotice}/>}
         <footer className="workspace-footer"><span>Stay curious. There is no script.</span><span>POWERED BY BOSON HIGGS REALTIME</span></footer>
       </div>
     </main>

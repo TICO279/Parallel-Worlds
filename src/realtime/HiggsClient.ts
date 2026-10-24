@@ -4,6 +4,8 @@ import { MicCapture } from '../audio/capture';
 import { describeClose, inputAudioAppend, truncateItem, WS_URL } from './protocol';
 import type { LatencyRecord } from '../../shared/characterState';
 import { SEED_PREFIX } from '../../shared/tree';
+import { TtsPlayback } from '../audio/ttsPlayback';
+import type { SpeechSnapshot } from '../../shared/tts';
 export type ConnectionState = 'idle' | 'connecting' | 'ready' | 'closing' | 'closed';
 export type Activity = 'idle' | 'listening' | 'thinking' | 'speaking';
 export interface Player {
@@ -12,6 +14,10 @@ export interface Player {
 }
 export interface Microphone { active: boolean; start(): Promise<void>; stop(): Promise<void>; }
 export interface ClientOptions {
+  tts?: { enabled(): boolean; prepare(turnNumber: number, signal: AbortSignal): Promise<SpeechSnapshot>;
+    synthesize(text: string, itemId: string, snapshot: SpeechSnapshot, signal: AbortSignal): Promise<ArrayBuffer>;
+    onStyle(snapshot: SpeechSnapshot): void };
+  ttsPlayerFactory?: () => TtsPlayback;
   bootstrap(signal: AbortSignal): Promise<SessionBootstrap>;
   onBootstrap(data: SessionBootstrap): void;
   onState(state: ConnectionState): void; onActivity(activity: Activity): void;
@@ -26,6 +32,10 @@ export interface ClientOptions {
   micFactory?: (chunk: (b64: string) => void, level: (rms: number) => void) => Microphone;
 }
 export class HiggsClient {
+  private ttsMode = false; private ttsPlayer?: TtsPlayback; private speechAbort?: AbortController;
+  private voiceSnapshot?: Promise<SpeechSnapshot>; private turnNumber = 0;
+  private textItems = new Map<string, { responseId?: string; text: string }>();
+  private responseItems = new Map<string, string>(); private spoken = new Set<string>();
   private gen = 0; private ws: WebSocket | null = null; private controller?: AbortController;
   private player?: Player; private mic?: Microphone; private timeout?: ReturnType<typeof setTimeout>;
   private state: ConnectionState = 'idle'; private currentItem?: string;
@@ -53,6 +63,8 @@ export class HiggsClient {
     this.latestUserId = undefined; this.currentResponseId = undefined; this.typedAt = undefined; this.metrics.clear(); this.responseTurns.clear();
     this.inputMs = 0; this.inputClock = [];
     this.userEpoch = 0; this.guidanceOverlap = false;
+    this.ttsMode = this.options.tts?.enabled() ?? false; this.turnNumber = 0; this.voiceSnapshot = undefined;
+    this.textItems.clear(); this.responseItems.clear(); this.spoken.clear();
     this.controller = new AbortController();
     const alive = () => gen === this.gen;
     const drained = () => { if (alive()) { this.queued = false; this.options.onActivity(this.generating ? 'thinking' : this.mic?.active ? 'listening' : 'idle'); this.applyWhenIdle(); } };
@@ -70,7 +82,8 @@ export class HiggsClient {
     this.timeout = setTimeout(() => fail('Session initialization timed out. Check your network and try again.'), 25000);
     try {
       // Start playback initialization inside the Connect gesture, before network I/O.
-      const audioReady = player.resume();
+      this.ttsPlayer = this.ttsMode ? this.options.ttsPlayerFactory?.() ?? new TtsPlayback() : undefined;
+      const audioReady = this.ttsPlayer ? this.ttsPlayer.resume() : player.resume();
       await audioReady;
       if (!alive()) { await player.close(); return; }
       const data = await this.options.bootstrap(this.controller.signal);
@@ -113,6 +126,29 @@ export class HiggsClient {
     this.send(inputAudioAppend(audio));
   }
   private handle(event: ProtocolEvent, gen: number) {
+    // text.done has no item_id in Boson's protocol. Correlate by response + output index.
+    if (event.type === 'response.output_item.added') {
+      const item = event.item as { id?: string; role?: string } | undefined;
+      if (item?.role === 'assistant' && item.id) this.responseItems.set(`${event.response_id}:${event.output_index ?? 0}`, item.id);
+    }
+    if (event.type === 'response.output_text.delta' || event.type === 'response.output_text.done') {
+      const id = typeof event.item_id === 'string' ? event.item_id : this.responseItems.get(`${event.response_id}:${event.output_index ?? 0}`);
+      if (id) {
+        const old = this.textItems.get(id)?.text ?? '';
+        const text = event.type.endsWith('.delta') ? old + String(event.delta ?? '') : String(event.text ?? old);
+        this.textItems.set(id, { responseId: String(event.response_id ?? this.currentResponseId ?? ''), text });
+        this.options.onEvent({ ...event, type: event.type.endsWith('.delta') ? 'response.output_audio_transcript.delta' : 'response.output_audio_transcript.done', item_id: id,
+          ...(event.type.endsWith('.done') && { transcript: text }) });
+      }
+    }
+    if (event.type === 'response.output_item.done') {
+      const item = event.item as { id?: string; role?: string; content?: { text?: string }[] } | undefined;
+      if (item?.id && item.role === 'assistant') {
+        const text = item.content?.map(p => p.text ?? '').join('') || this.textItems.get(item.id)?.text || '';
+        if (text) { this.textItems.set(item.id, { responseId: String(event.response_id ?? this.currentResponseId ?? ''), text });
+          this.options.onEvent({ type: 'response.output_audio_transcript.done', item_id: item.id, response_id: event.response_id, transcript: text }); }
+      }
+    }
     this.options.onEvent(event);
     switch (event.type) {
       case 'session.created': case 'session.updated':
@@ -144,6 +180,7 @@ export class HiggsClient {
         if (item?.role === 'assistant' && item.id) this.currentItem = item.id; break;
       }
       case 'response.output_audio.delta': {
+        if (this.ttsMode) break;
         const id = typeof event.item_id === 'string' ? event.item_id : this.currentItem;
         if (!id || this.blocked.has(id) || typeof event.delta !== 'string' || !event.delta) break;
         const responseId = typeof event.response_id === 'string' ? event.response_id : this.currentResponseId;
@@ -156,6 +193,12 @@ export class HiggsClient {
         this.player?.enqueueBase64(event.delta); this.options.onActivity('speaking'); break;
       }
       case 'response.done':
+        if (this.ttsMode && (event.response as { status?: string })?.status === 'completed') {
+          const responseId = (event.response as { id?: string }).id;
+          for (const [id, t] of this.textItems) if (t.responseId === responseId && !this.spoken.has(id) && !this.blocked.has(id)) {
+            this.spoken.add(id); void this.speakTts(id, t.text, gen);
+          }
+        }
         if (!(event.response as { id?: string } | undefined)?.id || (event.response as { id?: string }).id === this.currentResponseId) {
           this.generating = false; if (!this.queued) this.options.onActivity(this.mic?.active ? 'listening' : 'idle'); this.applyWhenIdle();
         } break;
@@ -205,6 +248,7 @@ export class HiggsClient {
   private emitMetric(metric: LatencyRecord) { this.options.onLatency?.({ ...metric }); }
   /** Async mode never suppresses VAD or requests an extra response. Latest state wins. */
   queueInstructions(version: number, instructions: string, context?: { persistentInstructions: string; triggerTurnId?: string }) {
+    if (this.ttsMode) return;
     if (this.state !== 'ready' || this.updateFailed || version <= this.appliedVersion ||
       version <= (this.pendingInstructions?.version ?? 0) || version <= (this.applying?.version ?? 0)) return;
     const current = context?.triggerTurnId === this.latestUserId && this.typedAt === undefined && !this.userSpeaking;
@@ -224,11 +268,27 @@ export class HiggsClient {
     this.send({ type: 'session.update', event_id: `state-${this.gen}-${update.version}`, session: { instructions: update.instructions } });
   }
   private newUserTurn() {
+    if (this.ttsMode && this.options.tts) {
+      this.turnNumber++;
+      this.voiceSnapshot = this.options.tts.prepare(this.turnNumber, this.controller!.signal);
+      // Observe failures immediately; speakTts will report a text-only fallback.
+      void this.voiceSnapshot.catch(() => {});
+    }
     this.userEpoch++; this.guidanceOverlap = Boolean(this.applying);
     if (this.pendingInstructions?.persistentInstructions) this.pendingInstructions.instructions = this.pendingInstructions.persistentInstructions;
   }
   private playbackItem?: string;
   private async bargeIn(gen: number) {
+    if (this.ttsMode) {
+      this.speechAbort?.abort();
+      const id = this.currentItem; const played = this.ttsPlayer?.stop() ?? 0;
+      if (id && (this.queued || this.generating)) {
+        this.blocked.add(id); this.options.onEvent({ type: 'client.interrupted', item_id: id, played_ms: played });
+      }
+      this.queued = false;
+      // Text-only sessions cannot truncate by audio time. Retain and label generated text.
+      return;
+    }
     const id = this.currentItem; const player = this.player;
     if (!id || !player || (!this.queued && !this.generating)) return;
     this.blocked.add(id); this.queued = false;
@@ -262,6 +322,9 @@ export class HiggsClient {
   async disconnect(): Promise<void> {
     if (this.closing) return this.closing;
     ++this.gen; clearTimeout(this.timeout); this.controller?.abort();
+    this.speechAbort?.abort();
+    const ttsPlayed = this.ttsPlayer?.stop() ?? 0;
+    const ttsClose = this.ttsPlayer?.close(); this.ttsPlayer = undefined;
     if (this.applying) { clearTimeout(this.applying.timer); this.options.onApplication?.(this.applying.version, 'failed'); }
     this.applying = undefined; this.pendingInstructions = undefined;
     this.setState('closing');
@@ -270,7 +333,7 @@ export class HiggsClient {
     const player = this.player; const mic = this.mic; this.player = undefined; this.mic = undefined;
     const interrupted = this.currentItem && (this.queued || this.generating) ? this.currentItem : undefined;
     const hadSession = this.hadSession; this.hadSession = false;
-    const flush = interrupted && player ? player.flush() : Promise.resolve(0);
+    const flush = this.ttsMode ? Promise.resolve(ttsPlayed) : interrupted && player ? player.flush() : Promise.resolve(0);
     this.queued = false; this.generating = false; this.currentItem = undefined; this.playbackItem = undefined;
     this.options.onMic(false); this.options.onLevel(0); this.options.onActivity('idle');
     this.closing = (async () => {
@@ -283,9 +346,36 @@ export class HiggsClient {
         if (interrupted) this.options.onEvent({ type: 'client.interrupted', item_id: interrupted, played_ms: played });
         this.options.onEvent({ type: 'client.closed' });
       }
-      await Promise.allSettled([stopMic, player?.close()]);
+      await Promise.allSettled([stopMic, player?.close(), ttsClose]);
       this.setState('closed'); this.closing = undefined;
     })();
     return this.closing;
+  }
+  private async speakTts(id: string, text: string, gen: number) {
+    if (!this.options.tts || !text.trim()) return;
+    this.speechAbort?.abort(); const controller = new AbortController(); this.speechAbort = controller;
+    const snapshotPromise = this.voiceSnapshot;
+    this.currentItem = id; this.queued = true; this.options.onActivity('thinking');
+    const active = () => gen === this.gen && !controller.signal.aborted && !this.blocked.has(id);
+    try {
+      const snapshot = await snapshotPromise;
+      if (!snapshot || !active()) return;
+      this.options.tts.onStyle(snapshot);
+      const bytes = await this.options.tts.synthesize(text, id, snapshot, controller.signal);
+      if (!active()) return;
+      const turnId = this.currentResponseId ? this.responseTurns.get(this.currentResponseId) : undefined;
+      const metric = turnId ? this.metrics.get(turnId) : undefined;
+      if (metric) { metric.firstAudioAt = performance.now(); this.emitMetric(metric); }
+      await this.ttsPlayer?.play(bytes, controller.signal, () => {
+        if (!active()) return;
+        if (metric) { metric.playbackStartedAt = performance.now(); this.emitMetric(metric); }
+        this.options.onActivity('speaking');
+      }, () => {
+        if (!active()) return; this.queued = false;
+        this.options.onActivity(this.mic?.active ? 'listening' : 'idle');
+      });
+    } catch {
+      if (active()) { this.queued = false; this.options.onError('TTS failed. Read the text reply; check your Boson key, voice and connection.'); this.options.onActivity(this.mic?.active ? 'listening' : 'idle'); }
+    }
   }
 }

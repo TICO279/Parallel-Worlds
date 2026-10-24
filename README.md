@@ -1,5 +1,10 @@
 # Parallel Worlds
 
+**TTS output:** server configuration lets Realtime write text and Higgs TTS 3 speak it
+without adding development controls to the app. Live appraisal or saved examples control
+delivery only. Saved examples need no DeepSeek key. See [setup, human listening checklist,
+fixture provenance and limitations](docs/tts-evaluation.md).
+
 A local voice-conversation lab powered by Boson Higgs Realtime. Phase 1 includes
 Alex's first date and Morgan's mock interview, microphone streaming, server VAD,
 interruptions, ordered transcripts, and JSON export.

@@ -26,6 +26,45 @@ function harness(overrides: Partial<ClientOptions> = {}) {
 }
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 describe('Higgs adapter with mocked transport and audio', () => {
+  it('uses text.done correlation, deduplicates final items and plays TTS once with the frozen style', async () => {
+    const snapshot = { id: 'snapshot', style: { label: 'Neutral', prefix: '<|reset|>' }, source: 'fixture', turnNumber: 1 };
+    const tts = { enabled: () => true, prepare: vi.fn(async () => snapshot), synthesize: vi.fn(async () => new ArrayBuffer(4)), onStyle: vi.fn() };
+    const playback = { resume: vi.fn(async () => {}), play: vi.fn(async (_bytes, _signal, start) => start()), stop: vi.fn(() => 120), close: vi.fn(async () => {}) };
+    const h = harness({ tts, ttsPlayerFactory: () => playback as any });
+    await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' }); h.client.sendText('Hello');
+    h.socket.receive({ type: 'conversation.item.added', item: { id: 'u1', role: 'user' } });
+    h.socket.receive({ type: 'response.created', response: { id: 'r1' } });
+    h.socket.receive({ type: 'response.output_item.added', response_id: 'r1', output_index: 0, item: { id: 'a1', role: 'assistant' } });
+    h.socket.receive({ type: 'response.output_text.delta', response_id: 'r1', output_index: 0, item_id: 'a1', delta: 'Hello!' });
+    h.socket.receive({ type: 'response.output_text.done', response_id: 'r1', output_index: 0, text: 'Hello!' });
+    h.socket.receive({ type: 'response.output_item.done', response_id: 'r1', item: { id: 'a1', role: 'assistant', content: [{ text: 'Hello!' }] } });
+    h.socket.receive({ type: 'response.done', response: { id: 'r1', status: 'completed' } });
+    h.socket.receive({ type: 'response.done', response: { id: 'r1', status: 'completed' } });
+    await vi.waitFor(() => expect(playback.play).toHaveBeenCalledTimes(1));
+    expect(tts.prepare).toHaveBeenCalledWith(1, expect.any(AbortSignal));
+    expect(tts.synthesize).toHaveBeenCalledWith('Hello!', 'a1', snapshot, expect.any(AbortSignal));
+    expect(h.opts.onEvent).toHaveBeenCalledWith(expect.objectContaining({ type: 'response.output_audio_transcript.done', item_id: 'a1', transcript: 'Hello!' }));
+    h.client.queueInstructions(1, 'Change wording');
+    h.socket.receive({ type: 'input_audio_buffer.speech_started', item_id: 'u2' });
+    expect(playback.stop).toHaveBeenCalled();
+    expect(h.socket.sent.some(e => e.type === 'conversation.item.truncate' || e.session?.instructions === 'Change wording')).toBe(false);
+    await h.client.disconnect(); expect(playback.close).toHaveBeenCalled();
+  });
+  it('aborts pending synthesis on interruption and ignores late audio', async () => {
+    let finish!: (b: ArrayBuffer) => void; let signal: AbortSignal | undefined;
+    const playback = { resume: vi.fn(async () => {}), play: vi.fn(), stop: vi.fn(() => 0), close: vi.fn(async () => {}) };
+    const h = harness({ ttsPlayerFactory: () => playback as any, tts: { enabled: () => true,
+      prepare: async () => ({ id: 's', style: { label: 'Neutral', prefix: '' }, source: 'test', turnNumber: 1 }), onStyle: vi.fn(),
+      synthesize: async (_t, _i, _s, s) => { signal = s; return new Promise(r => { finish = r; }); } } });
+    await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' }); h.client.sendText('Hi');
+    h.socket.receive({ type: 'response.created', response: { id: 'r1' } });
+    h.socket.receive({ type: 'response.output_item.done', response_id: 'r1', item: { id: 'a1', role: 'assistant', content: [{ text: 'Hello' }] } });
+    h.socket.receive({ type: 'response.done', response: { id: 'r1', status: 'completed' } });
+    await vi.waitFor(() => expect(signal).toBeDefined());
+    h.socket.receive({ type: 'input_audio_buffer.speech_started', item_id: 'u2' });
+    expect(signal!.aborted).toBe(true); finish(new ArrayBuffer(4)); await Promise.resolve(); await Promise.resolve();
+    expect(playback.play).not.toHaveBeenCalled(); await h.client.disconnect();
+  });
   it('defers adaptive updates through generation and playback, and records only matching acknowledgements', async () => {
     const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
     h.socket.receive({ type: 'response.created', response: { id: 'r1' } });

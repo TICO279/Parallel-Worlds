@@ -49,6 +49,12 @@ export class AdaptationCoordinator {
   instructions(id: string) {
     const session = this.store.get(id); const scenario = this.scenarios.find(s => s.id === session.scenarioId)!;
     const state = this.current(id);
+    // Delivery-only appraisal never compiles dynamic guidance into Realtime wording.
+    if (session.speechMode === 'tts') {
+      const instructions = buildContext(scenario).instructions;
+      return { version: state.version, instructions, persistentInstructions: instructions, turnInstructions: instructions,
+        contextHash: createHash('sha256').update(instructions).digest('hex'), triggerTurnId: state.lastProcessedTurnId ?? undefined };
+    }
     const context = appraisalContext([...branchTurns(session.branch?.history), ...session.turns], state.lastProcessedOrder + 1);
     // Automatic replies may already exist: never dispatch an acknowledgement of a past utterance.
     const dynamic = this.get(id).mode === 'adaptive' ? state : {};

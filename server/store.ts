@@ -28,6 +28,11 @@ export function parseTurns(raw: unknown): Turn[] {
   });
 }
 export class ConversationStore {
+  setSpeechMode(id: string, mode: 'realtime' | 'tts') { const s = this.get(id); s.speechMode = mode; this.sessions.set(id, s); }
+  setSpeechStyleSource(id: string, source: 'saved' | 'neutral' | 'live') { const s = this.get(id); s.speechStyleSource = source; this.sessions.set(id, s); }
+  recordSpeech(id: string, record: NonNullable<StoredSession['speechRecords']>[number]) {
+    const s = this.get(id); s.speechRecords = [...(s.speechRecords ?? []), structuredClone(record)].slice(-2000); this.sessions.set(id, s);
+  }
   private sessions = new Map<string, StoredSession>();
   private notified = new Set<string>();
   private listeners: CompletedTurnListener[] = [];

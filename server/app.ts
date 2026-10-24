@@ -9,6 +9,7 @@ import { adaptationConfig, type AdaptationConfig } from './adaptation/config';
 import type { AppraisalProvider } from './adaptation/providers';
 import { z } from 'zod';
 import { prepareBranch } from './branching';
+import { registerTts } from './tts';
 const metricPayload = z.strictObject({ turnId: z.string().max(200), responseId: z.string().max(200).optional(),
   inputKind: z.enum(['text', 'audio']).optional(),
   guidanceUncertain: z.boolean().optional(),
@@ -19,7 +20,8 @@ const metricPayload = z.strictObject({ turnId: z.string().max(200), responseId: 
 // Do not accept arbitrary loopback ports or hosts that merely start with localhost.
 const localOrigins = new Set([3000, 5173, 5174].flatMap(port =>
   [`http://127.0.0.1:${port}`, `http://localhost:${port}`]));
-export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider } = {}) {
+export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider;
+  speech?: { mode: 'realtime' | 'tts'; source: 'saved' | 'neutral' | 'live'; voice: string } } = {}) {
   const app = express(); const store = options.store ?? new ConversationStore();
   const coordinator = new AdaptationCoordinator(store, scenarios, options.adaptation ?? adaptationConfig({}), options.provider);
   app.disable('x-powered-by');
@@ -33,21 +35,31 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     next();
   });
   app.use(express.json({ limit: '2mb' }));
-  app.get('/api/health', (_req, res) => res.json({ ok: true, credentialsConfigured: Boolean(options.apiKey?.trim()) }));
+  app.get('/api/health', (_req, res) => res.json({ ok: true, credentialsConfigured: Boolean(options.apiKey?.trim()),
+    speech: options.speech ?? { mode: 'realtime', source: 'saved', voice: 'default' } }));
   app.get('/api/scenarios', (_req, res) => res.json(scenarios));
+  registerTts(app, store, options.apiKey, options.fetcher);
   app.post('/api/sessions', async (req, res) => {
     const scenario = scenarios.find(s => s.id === req.body?.scenarioId);
     if (!scenario) throw new ApiError(400, 'Choose a valid scenario.');
-    const mode = req.body?.mode ?? 'static';
+    const speechMode = req.body?.speechMode ?? 'realtime';
+    if (!['realtime', 'tts'].includes(speechMode)) throw new ApiError(400, 'Choose a valid speech mode.');
+    const speechStyleSource = req.body?.speechStyleSource ?? 'saved';
+    if (!['saved', 'neutral', 'live'].includes(speechStyleSource)) throw new ApiError(400, 'Choose a valid delivery source.');
+    if (speechMode === 'tts' && speechStyleSource === 'live' && (options.adaptation?.provider ?? 'mock') === 'mock' && !options.provider)
+      throw new ApiError(409, 'Live delivery needs APPRAISAL_PROVIDER=deepseek (or openai) and its project key. Restart the backend after changing .env.');
+    const mode = speechMode === 'tts' ? speechStyleSource === 'live' ? 'adaptive' : 'static' : req.body?.mode ?? 'static';
     if (mode !== 'static' && mode !== 'adaptive') throw new ApiError(400, 'Choose static or adaptive mode.');
     const resumed = prepareBranch(req.body?.history, scenario, store, mode === 'adaptive');
     const credential = await mintCredential(options.apiKey, options.fetcher);
     const created = store.create(scenario);
+    store.setSpeechMode(created.id, speechMode);
+    store.setSpeechStyleSource(created.id, speechStyleSource);
     if (resumed.branch) store.setBranch(created.id, resumed.branch);
     coordinator.initialize(created.id, mode, resumed.restored);
     const prepared = coordinator.instructions(created.id); const session = store.get(created.id);
-    const config = { ...buildContext(scenario), instructions: prepared.instructions };
-    res.status(201).json({ session, config: buildHiggsConfig(config), credential });
+    const config = speechMode === 'tts' ? buildContext(scenario) : { ...buildContext(scenario), instructions: prepared.instructions };
+    res.status(201).json({ session, config: buildHiggsConfig(config, speechMode === 'tts' ? 'text' : 'audio'), credential });
   });
   app.patch('/api/sessions/:id', (req, res) => {
     const session = store.lifecycle(req.params.id, req.body);

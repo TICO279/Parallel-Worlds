@@ -34,6 +34,9 @@ export interface StoredSession {
   createdAt: number; updatedAt: number; status: SessionStatus; revision: number; turns: Turn[];
   adaptation?: AdaptationData;
   branch?: BranchContext;
+  speechMode?: 'realtime' | 'tts';
+  speechStyleSource?: 'saved' | 'neutral' | 'live';
+  speechRecords?: Array<import('./tts').SpeechSnapshot & { itemId: string; text: string; voice: string; model: string; synthesisMs: number; bytes: number }>;
 }
 export interface ProtocolEvent { type: string; event_id?: string; [key: string]: unknown; }
 export interface SessionBootstrap {
