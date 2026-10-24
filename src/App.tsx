@@ -1,3 +1,4 @@
+import { APP_VERSION } from './version';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Conversation, ConversationTree, ProtocolEvent, Scenario, SessionBootstrap, StoredSession, TreeNode } from '../shared/domain';
 import { emptyConversation, orderedTurns, reduceTranscript } from '../shared/transcript';
@@ -173,7 +174,7 @@ export function App() {
         <span className="scenario-number">0{i + 1}</span><span><strong>{s.title}</strong><small>{i === 0 ? 'Connection & curiosity' : 'Clarity & confidence'}</small></span><span className="option-arrow">↗</span>
       </button>)}</nav>
       <div className="sidebar-note"><span className="small-orbit">✳</span><p>Every conversation starts<br/>with being present.</p></div>
-      <footer className="sidebar-footer"><span className="status-dot"/> PHASE 02 <span>ADAPTIVE CHARACTERS</span></footer>
+      <footer className="sidebar-footer"><span className="status-dot"/> <span className="app-version">{APP_VERSION}</span> <span>ADAPTIVE CHARACTERS</span></footer>
     </aside>
     <main>
       <header className="topbar"><span>EXPERIENCE / <b>LIVE CONVERSATION</b></span><span className={`connection-pill ${connection === 'ready' ? 'connected' : ''}`}><span className="status-dot"/>{connection === 'ready' ? 'Connected' : connection === 'connecting' ? 'Connecting…' : 'Not connected'}</span></header>
@@ -196,9 +197,11 @@ export function App() {
                 : path.length ? `${name} remembers the conversation so far. Type, or enable your microphone, to carry on.` : 'Type a message, or enable your microphone and say hello.'
                 : atFork ? `The completed dialogue up to this point will be replayed. Say something different this time.`
                 : path.length ? 'Click one of your own lines to revert to that point.' : 'A live voice conversation, at your own pace.'}</p>
-              {(Object.keys(tree.nodes).length > 0 || busy || shownSession) && <button className={`restart-button ${confirmRestart ? 'confirm' : ''}`}
-                disabled={connection === 'closing'} onClick={() => void startOver()} onBlur={() => setConfirmRestart(false)}>
-                {confirmRestart ? `Click again to erase this conversation with ${name} and start over` : '↺ Start over'}</button>}
+              {/* Always visible; disabled until there is something to erase. */}
+              <button className={`restart-button ${confirmRestart ? 'confirm' : ''}`}
+                disabled={connection === 'closing' || !(Object.keys(tree.nodes).length > 0 || busy || shownSession)}
+                title="Erase this conversation and start fresh" onClick={() => void startOver()} onBlur={() => setConfirmRestart(false)}>
+                {confirmRestart ? `Click again to erase this conversation with ${name} and start over` : '↺ Start over'}</button>
             </div>
           </section>
           <section className={`transcript-card ${Object.keys(tree.nodes).length ? 'has-tree' : ''}`} aria-labelledby="transcript-title">
