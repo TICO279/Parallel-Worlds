@@ -1,0 +1,87 @@
+<!doctype html>
+<!-- Source of docs/images/turn-flow.png. Render: node docs/images/src/render.mjs -->
+<html lang="en"><head><meta charset="utf-8"><title>One turn</title>
+<style>
+  :root { --boson: #5b4bdb; --tts: #7c3aed; --deepseek: #2f5bff; --ink: #111827; --muted: #6b7280; --orange: #f59e0b; --green: #10b981; --pink: #ff4d6d; }
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 1600px; height: 680px; font-family: -apple-system, "SF Pro Display", "Segoe UI", sans-serif; color: var(--ink);
+    background: radial-gradient(900px 500px at 0% 100%, #fff1f3 0%, transparent 55%), radial-gradient(900px 600px at 100% 0%, #eef2ff 0%, transparent 60%), #fbfbfd; }
+  .canvas { position: relative; width: 1600px; height: 680px; }
+  h1 { position: absolute; left: 60px; top: 38px; font-size: 32px; letter-spacing: -0.02em; }
+  .sub { position: absolute; left: 60px; top: 84px; font-size: 17px; color: var(--muted); }
+  .step { position: absolute; width: 230px; padding: 16px 18px; border-radius: 18px; background: #fff;
+    box-shadow: 0 10px 28px rgba(17,24,39,.08), 0 0 0 1px rgba(17,24,39,.06); }
+  .step .who { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; color: #fff; }
+  .step h4 { font-size: 18px; margin-top: 10px; line-height: 1.25; }
+  .step p { font-size: 14px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+  .step code { font: 12.5px "SF Mono", Menlo, monospace; color: var(--boson); }
+  .n { position: absolute; top: -14px; left: -14px; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; background: var(--ink); box-shadow: 0 4px 10px rgba(0,0,0,.18); }
+  .par { position: absolute; left: 556px; top: 170px; width: 290px; height: 460px; border-radius: 24px; border: 2px dashed #c7d2fe; }
+  .par span { position: absolute; top: -13px; left: 18px; padding: 2px 10px; font-size: 13px; font-weight: 700; color: #6366f1; background: #fbfbfd; }
+  .diamond { position: absolute; left: 900px; top: 340px; width: 130px; height: 130px; transform: rotate(45deg); border-radius: 18px; background: #fff7ed; border: 2px solid var(--orange); }
+  .diamond-label { position: absolute; left: 900px; top: 372px; width: 130px; text-align: center; font-size: 16px; font-weight: 700; line-height: 1.2; }
+  .major { position: absolute; left: 1080px; top: 140px; width: 270px; padding: 14px 16px; border-radius: 16px; background: #fff7ed; border: 2px solid #fdba74; }
+  .major h4 { font-size: 16px; color: #b45309; }
+  .major ol { margin-top: 6px; padding-left: 18px; font-size: 13.5px; color: #78350f; line-height: 1.5; }
+  .major code { font: 12px "SF Mono", Menlo, monospace; }
+  .hear { position: absolute; left: 1350px; top: 575px; width: 230px; text-align: center; font-size: 16px; font-weight: 600; color: var(--pink); }
+  svg.wires { position: absolute; inset: 0; pointer-events: none; }
+  .lbl { position: absolute; font-size: 13px; font-weight: 700; padding: 3px 8px; border-radius: 8px; background: #fff; box-shadow: 0 2px 8px rgba(17,24,39,.08); }
+</style></head>
+<body><div class="canvas">
+  <h1>One turn of the date</h1>
+  <p class="sub">She never says anything until DeepSeek has decided how your line made her feel.</p>
+
+  <svg class="wires" viewBox="0 0 1600 680">
+    <defs>
+      <marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#64748b"/></marker>
+      <marker id="mo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#f59e0b"/></marker>
+      <marker id="mg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#10b981"/></marker>
+    </defs>
+    <path d="M270 405 H 300" stroke="#64748b" stroke-width="2.5" marker-end="url(#m)"/>
+    <path d="M530 405 C 545 405, 545 290, 572 290" fill="none" stroke="#64748b" stroke-width="2.5" marker-end="url(#m)"/>
+    <path d="M530 405 C 545 405, 545 520, 572 520" fill="none" stroke="#64748b" stroke-width="2.5" marker-end="url(#m)"/>
+    <path d="M846 405 H 892" stroke="#64748b" stroke-width="2.5" marker-end="url(#m)"/>
+    <!-- major: up to the redraft box, back down to step 5 -->
+    <path d="M965 332 C 965 250, 1000 230, 1072 230" fill="none" stroke="#f59e0b" stroke-width="3" marker-end="url(#mo)"/>
+    <path d="M1215 282 V 368" fill="none" stroke="#f59e0b" stroke-width="3" marker-end="url(#mo)"/>
+    <!-- ordinary: straight on -->
+    <path d="M1040 405 H 1086" stroke="#10b981" stroke-width="3" marker-end="url(#mg)"/>
+    <path d="M1316 455 H 1342" stroke="#64748b" stroke-width="2.5" marker-end="url(#m)"/>
+  </svg>
+
+  <div class="step" style="left:40px; top:330px">
+    <div class="n">1</div><span class="who" style="background:var(--pink)">You</span>
+    <h4>Speak, or type</h4><p>Your mic streams to Boson over a WebSocket. Typing works too.</p>
+  </div>
+  <div class="step" style="left:300px; top:310px">
+    <div class="n">2</div><span class="who" style="background:var(--boson)">Higgs Realtime</span>
+    <h4>Hears you</h4><p><code>higgs-stt-3.1</code> transcribes. <code>semantic_vad</code> knows when you've finished your thought.</p>
+  </div>
+  <div class="par"><span>at the same time</span></div>
+  <div class="step" style="left:586px; top:205px">
+    <div class="n">3</div><span class="who" style="background:var(--boson)">Higgs Realtime</span>
+    <h4>Drafts her reply</h4><p>As <b>text</b>, held back. Nobody hears it yet.</p>
+  </div>
+  <div class="step" style="left:586px; top:440px">
+    <div class="n">3</div><span class="who" style="background:var(--deepseek)">DeepSeek</span>
+    <h4>Judges your line</h4><p>Chance of a major shift, and what kind: humor, pressure, apology, interest…</p>
+  </div>
+  <div class="diamond"></div>
+  <div class="diamond-label">Major<br>shift?</div>
+  <div class="lbl" style="left:960px; top:250px; color:#b45309">yes</div>
+  <div class="lbl" style="left:1036px; top:378px; color:#047857">no</div>
+  <div class="major">
+    <h4>She changes her mind first</h4>
+    <ol><li>Cancel and delete the unheard draft</li><li>Update her state, send new instructions (<code>session.update</code>)</li><li>Higgs drafts again</li></ol>
+  </div>
+  <div class="step" style="left:1086px; top:375px">
+    <div class="n">4</div><span class="who" style="background:var(--deepseek)">DeepSeek</span>
+    <h4>Chooses her emotions</h4><p>One per sentence, from how she feels now.</p>
+  </div>
+  <div class="step" style="left:1350px; top:375px; width:230px">
+    <div class="n">5</div><span class="who" style="background:var(--tts)">Higgs TTS 3</span>
+    <h4>Speaks it</h4><p>Her own voice, with <code>&lt;|emotion:…|&gt;</code> tags. Audio streams as it's made.</p>
+  </div>
+  <p class="hear">🔊 You hear her, and her line appears</p>
+</div></body></html>

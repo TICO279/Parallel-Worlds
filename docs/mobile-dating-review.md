@@ -1,8 +1,9 @@
 # Mobile dating practice review
 
-Branch: mobile-dating-review, based on origin/main2 (3781fed).
+Merged into `main2` from the `mobile-dating-review` branch.
 
-Open Ember at http://127.0.0.1:3000/, select a profile, then Parallel Worlds.
+Open Ember (http://127.0.0.1:5173/ with `pnpm dev`, or :3000 after `pnpm build` and `pnpm start`),
+select a profile, then Parallel Worlds.
 Have an exchange, choose Evaluate, Pause conversation, then Review my practice.
 DeepSeek returns a supported strength and up to three suggestions for the active path.
 Each quote and user node ID is validated before display. Partner context must match
@@ -21,4 +22,4 @@ The latest 60 completed transcript lines (up to 2000 characters each) are review
 
 Testing: build/typecheck and automated suite; live mobile preview with typed turns,
 DeepSeek feedback, exact-turn navigation and fresh-session replay. Physical phone
-microphone testing requires an HTTPS address; current delivery is browser preview.
+microphone testing requires an HTTPS address: see "Use it on an iPhone" in the [README](../README.md).
