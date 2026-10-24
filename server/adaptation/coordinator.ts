@@ -27,9 +27,10 @@ export class AdaptationCoordinator {
     this.provider = provider ?? createProvider(config);
     store.subscribe((id, turn) => { if (turn.role === 'user') void this.enqueue(id); });
   }
-  initialize(id: string, mode: 'static' | 'adaptive', restored?: DynamicCharacterState, variation?: number, controlledText = false, seed?: string) {
+  initialize(id: string, mode: 'static' | 'adaptive', restored?: DynamicCharacterState, variation?: number, controlledText = false, seed?: string, branchId = 'main') {
     const session = this.store.get(id); const scenario = this.scenarios.find(s => s.id === session.scenarioId)!;
     const base = initialState(scenario.character, id, Date.now());
+    base.branchId = branchId; base.id = `${id}:${branchId}:0`;
     const behavior = restored?.behavior ? structuredClone(restored.behavior) : initialBehavior(scenario.character,
       seed ?? this.config.behaviorSeed ?? randomBytes(16).toString('hex'), variation ?? this.config.behaviorVariation ?? 0);
     if (restored?.behavior && variation !== undefined) behavior.variation = variation;

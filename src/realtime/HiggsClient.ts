@@ -6,6 +6,7 @@ import type { LatencyRecord } from '../../shared/characterState';
 import { SEED_PREFIX } from '../../shared/tree';
 import { DirectedText } from './DirectedText';
 import type { ResponsePlan } from '../../shared/behavior';
+import { ReplayGate } from './ReplayGate';
 export type ConnectionState = 'idle' | 'connecting' | 'ready' | 'closing' | 'closed';
 export type Activity = 'idle' | 'listening' | 'thinking' | 'speaking';
 export interface Player {
@@ -21,6 +22,8 @@ export interface ClientOptions {
   onMic(active: boolean): void; onLevel(level: number): void;
   /** History to replay after the session is acknowledged and before any microphone audio. */
   seed?: () => ProtocolEvent[];
+  /** Durable restoration must be committed after configuration and every history echo match. */
+  confirmReady?: (signal:AbortSignal) => Promise<void>;
   onApplication?: (version: number, status: 'acknowledged' | 'failed' | 'deferred' | 'dispatched') => void;
   onLatency?: (metric: LatencyRecord) => void;
   prepareTypedResponse?: (turnId: string, signal: AbortSignal) => Promise<ResponsePlan>;
@@ -45,6 +48,8 @@ export class HiggsClient {
   private inputMs = 0; private inputClock: { startMs: number; endMs: number; at: number }[] = [];
   private userEpoch = 0; private guidanceOverlap = false;
   private directed: DirectedText; private typedOrdinal = 0;
+  private replay?: ReplayGate;
+  private playbackNotified = new Set<string>();
   constructor(private options: ClientOptions) {
     this.directed = new DirectedText({ send: e => this.send(e),
       prepare: (id, signal) => options.prepareTypedResponse ? options.prepareTypedResponse(id, signal) : Promise.reject(new Error('Directed setup unavailable.')),
@@ -69,9 +74,10 @@ export class HiggsClient {
     this.inputMs = 0; this.inputClock = [];
     this.userEpoch = 0; this.guidanceOverlap = false;
     this.directed.close(); this.directed.enabled = false; this.typedOrdinal = 0;
+    this.replay=undefined;this.playbackNotified.clear();
     this.controller = new AbortController();
     const alive = () => gen === this.gen;
-    const drained = () => { if (alive()) { this.queued = false; this.options.onActivity(this.generating ? 'thinking' : this.mic?.active ? 'listening' : 'idle'); this.applyWhenIdle(); } };
+    const drained = () => { if (alive()) { this.queued = false; this.notifyPlayed(); this.options.onActivity(this.generating ? 'thinking' : this.mic?.active ? 'listening' : 'idle'); this.applyWhenIdle(); } };
     const fail = (message: string) => { if (alive()) { this.options.onError(message); void this.disconnect(); } };
     const playbackStarted = () => {
       if (!alive()) return;
@@ -92,6 +98,11 @@ export class HiggsClient {
       const data = await this.options.bootstrap(this.controller.signal);
       if (!alive()) return;
       this.hadSession = true; this.options.onBootstrap(data);
+      if(this.options.confirmReady) {
+        this.replay=new ReplayGate(String((data.config.session as {instructions?:string})?.instructions??''),this.options.seed?.()??[],e=>this.send(e),()=>{
+          void this.options.confirmReady!(this.controller!.signal).then(()=>{if(alive()){clearTimeout(this.timeout);this.setState('ready');}}).catch(()=>fail('The branch could not be activated. Its saved history is unchanged.'));
+        },()=>fail('Restoration was rejected: configuration/history mismatch or unsolicited response. The source conversation is preserved.'),e=>this.options.onEvent(e));
+      }
       this.directed.enabled = data.session.adaptation?.controlledText ?? false;
       const ws = this.options.socketFactory?.(WS_URL, ['realtime', `bai-client-secret.${data.credential.value}`])
         ?? new WebSocket(WS_URL, ['realtime', `bai-client-secret.${data.credential.value}`]);
@@ -130,6 +141,10 @@ export class HiggsClient {
     this.send(inputAudioAppend(audio));
   }
   private handle(event: ProtocolEvent, gen: number) {
+    if(this.replay&&this.state==='connecting'){this.replay.observe(event);return;}
+    if(this.replay&&this.state==='ready'&&event.type==='response.created'&&!this.latestUserId) {
+      this.options.onError('Unexpected response before a new user turn. Restoration stopped; the saved path is unchanged.');void this.disconnect();return;
+    }
     if (!this.directed.accept(event)) return;
     this.options.onEvent(event);
     this.directed.observe(event);
@@ -176,7 +191,7 @@ export class HiggsClient {
       }
       case 'response.done':
         if (!(event.response as { id?: string } | undefined)?.id || (event.response as { id?: string }).id === this.currentResponseId) {
-          this.generating = false; if (!this.queued) this.options.onActivity(this.mic?.active ? 'listening' : 'idle'); this.applyWhenIdle();
+          this.generating = false; this.notifyPlayed(); if (!this.queued) this.options.onActivity(this.mic?.active ? 'listening' : 'idle'); this.applyWhenIdle();
         } break;
       case 'input_audio_buffer.speech_started':
         this.newUserTurn();
@@ -220,6 +235,12 @@ export class HiggsClient {
     let metric = this.metrics.get(id);
     if (!metric) { metric = { turnId: id, appliedStateVersion: this.appliedVersion }; this.metrics.set(id, metric); }
     return metric;
+  }
+  private notifyPlayed() {
+    const id=this.currentItem;
+    if(id&&!this.generating&&!this.queued&&!this.blocked.has(id)&&!this.playbackNotified.has(id)) {
+      this.playbackNotified.add(id);this.options.onEvent({type:'client.playback_complete',item_id:id});
+    }
   }
   private emitMetric(metric: LatencyRecord) { this.options.onLatency?.({ ...metric }); }
   /** Async mode never suppresses VAD or requests an extra response. Latest state wins. */

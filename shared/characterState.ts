@@ -39,7 +39,7 @@ export const realismStateSchema = z.strictObject({ schemaVersion: z.literal(2), 
   policy: z.array(z.string().max(200)).max(12), evictedMemoryIds: z.array(z.string()).max(32),
   briefTurnId: z.string(), profileVersion: z.string(), compilerVersion: z.string() });
 export const characterStateSchema = z.strictObject({
-  id: z.string(), characterId: z.string(), sessionId: z.string(), branchId: z.literal('main'),
+  id: z.string(), characterId: z.string(), sessionId: z.string(), branchId: z.string().min(1),
   version: z.number().int().nonnegative(), previousStateId: z.string().nullable(),
   lastProcessedTurnId: z.string().nullable(), lastProcessedOrder: z.number().int(), timestamp: z.number().finite(),
   comfort: score, trust: score, curiosity: score, engagement: score,

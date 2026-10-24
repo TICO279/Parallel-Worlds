@@ -3,6 +3,7 @@ import type { BranchContext, Scenario, StoredSession, Turn } from '../shared/dom
 import type { CompletedTurnListener } from './orchestrator';
 import { ApiError } from './higgs';
 import type { AdaptationData } from '../shared/characterState';
+import type { LocalDatabase } from './persistence/database';
 const fail = () => { throw new ApiError(400, 'Invalid conversation snapshot.'); };
 /** Explicit allowlist prevents credentials or arbitrary protocol payloads entering exports. */
 export function parseTurns(raw: unknown): Turn[] {
@@ -23,6 +24,7 @@ export function parseTurns(raw: unknown): Turn[] {
       ...(t.previousItemId !== undefined && { previousItemId: t.previousItemId }),
       ...(Number.isFinite(t.completedAt) && { completedAt: t.completedAt }),
       ...(t.playedMs !== undefined && { playedMs: t.playedMs }),
+      ...(t.playbackComplete === true && { playbackComplete: true }),
       ...(t.transcriptionFailed === true && { transcriptionFailed: true }),
     } as Turn;
   });
@@ -31,22 +33,36 @@ export class ConversationStore {
   private sessions = new Map<string, StoredSession>();
   private notified = new Set<string>();
   private listeners: CompletedTurnListener[] = [];
-  constructor(private completed?: CompletedTurnListener) {}
+  private changes: ((session: StoredSession) => void)[] = [];
+  constructor(private completed?: CompletedTurnListener, private database?: LocalDatabase) {
+    for (const session of database?.sessions() ?? []) {
+      this.sessions.set(session.id, session);
+      for (const t of session.turns) if (t.transcriptFinal) this.notified.add(`${session.id}:${t.itemId}`);
+    }
+  }
+  onChange(listener: (session: StoredSession) => void) { this.changes.push(listener); }
+  private save(session: StoredSession) {
+    const persist=()=>{this.database?.saveSession(session);for(const listener of this.changes)listener(structuredClone(session));};
+    if(this.database){try{this.database.transaction(persist);}catch(error){const saved=this.database.session(session.id);if(saved)this.sessions.set(session.id,saved);else this.sessions.delete(session.id);throw error;}}else persist();
+  }
+  forget(id: string) { this.sessions.delete(id); this.database?.deleteSession(id); }
   subscribe(listener: CompletedTurnListener) { this.listeners.push(listener); }
   setBranch(id: string, branch: BranchContext) {
     const session = this.sessions.get(id);
     if (!session) throw new ApiError(404, 'Session not found.');
     session.branch = structuredClone(branch);
+    this.save(session);
   }
   setAdaptation(id: string, data: AdaptationData) {
     const session = this.sessions.get(id);
     if (!session) throw new ApiError(404, 'Session not found.');
     session.adaptation = structuredClone(data); session.updatedAt = Date.now();
+    this.save(session);
   }
   create(scenario: Scenario): StoredSession {
     const now = Date.now(); const s: StoredSession = { schemaVersion: 1, id: randomUUID(), scenarioId: scenario.id,
       characterId: scenario.character.id, status: 'connecting', createdAt: now, updatedAt: now, revision: 0, turns: [] };
-    this.sessions.set(s.id, s); return structuredClone(s);
+    this.sessions.set(s.id, s); this.save(s); return structuredClone(s);
   }
   get(id: string): StoredSession {
     const s = this.sessions.get(id); if (!s) throw new ApiError(404, 'Session not found. The backend may have restarted.');
@@ -60,14 +76,14 @@ export class ConversationStore {
     // A late active notification cannot resurrect a closed session.
     if (!(['closed', 'error'].includes(s.status) && b.status === 'active')) s.status = b.status as StoredSession['status'];
     if (typeof b.bosonSessionId === 'string') s.bosonSessionId = b.bosonSessionId;
-    s.updatedAt = Date.now(); this.sessions.set(id, s); return structuredClone(s);
+    s.updatedAt = Date.now(); this.sessions.set(id, s); this.save(s); return structuredClone(s);
   }
   snapshot(id: string, revision: unknown, raw: unknown): StoredSession {
     const s = this.get(id);
     if (!Number.isSafeInteger(revision) || Number(revision) < 1) throw new ApiError(400, 'Invalid revision.');
     const turns = parseTurns(raw);
     if (Number(revision) <= s.revision) return s; // retries and older requests are idempotent
-    s.revision = Number(revision); s.turns = turns; s.updatedAt = Date.now(); this.sessions.set(id, s);
+    s.revision = Number(revision); s.turns = turns; s.updatedAt = Date.now(); this.sessions.set(id, s); this.save(s);
     for (const t of turns) {
       const key = `${id}:${t.itemId}`;
       if (t.transcriptFinal && !this.notified.has(key)) {
