@@ -23,6 +23,7 @@ the person, and **DeepSeek** as the fast judge that decides how the person react
 - [Quick start](#quick-start)
 - [Use it on an iPhone](#use-it-on-an-iphone)
 - [How to use it](#how-to-use-it)
+- [The web monitor](#the-web-monitor)
 - [Configuration](#configuration)
 - [How it works](#how-it-works)
 - [Project layout](#project-layout)
@@ -123,7 +124,8 @@ and stop the tunnel (Ctrl+C) when you are done.
 
 1. **My profile** (the avatar tab): fill in who you are and **Save profile**. Your date reads it.
 2. **Discover**: tap a card to open her profile. **✕** passes, **♥** likes (every like is a
-   match), and the **Parallel Worlds** orb starts a simulated first date.
+   match), and the **Parallel Worlds** orb starts a simulated first date. On the **It's a Match**
+   screen you can send a message, **Simulate our first date**, or keep swiping.
 3. **The date**: tap the mic and talk, or type in the box. Outgoing partners speak first about
    something on your profile; reserved ones wait for you.
 4. **Change direction**: each thing you say is a dot on the timeline. Tap a dot, then speak, type
@@ -133,11 +135,35 @@ and stop the tunnel (Ctrl+C) when you are done.
    practice feedback that quotes your lines. From feedback you can jump to a line or retry it.
 6. **Messages → Your first dates**: reopen any date where you left off. Chats with matches are
    here too.
-7. **Monitor** (`/practice/` on the computer): follows the date in progress. You see each line
-   as it arrives, ★ on lines that shifted how she feels, the branch tree and the scores.
+7. **Monitor** (`/practice/` on the computer): follows the date live. See
+   [The web monitor](#the-web-monitor).
 
 **Fresh start:** restarting the app (`pnpm dev`) forgets every conversation, on the server and on
 the phone (dates, matches and chats). Your profile stays.
+
+## The web monitor
+
+While you are on the date on the phone, the web page at `/practice/` follows it live from the
+computer: useful for demos, for a coach or friend watching along, and for analysing a
+conversation afterwards. It is read-only; the phone does the talking.
+
+![The web monitor following a first date with Jordan: the dates from the phone on the left, Jordan's profile and the setting in the middle, and the current branch with every line and the conversation tree on the right](docs/images/monitor.png)
+
+- **Dates from the phone** (left): everyone you have had a simulated date with, newest first,
+  with **● Live on the phone** while that date is connected. The page follows the date in
+  progress; click another date to look at it, and **↻ Follow the phone** to go back.
+- **Your date** (middle): their photo, profile and the setting the character was given, which
+  combines their profile with yours.
+- **The current branch** (right): every line as it arrives, usually within a second, with ★ on
+  lines that shifted how they feel and a note on replies you interrupted.
+- **Conversation tree**: all branches, including the ones you left by rewinding.
+- **Character scores** (below): comfort, trust, interest, respect and closeness, mood, the last
+  judgment, voice emotions and timing, for the newest session.
+- **Export the latest session** downloads it as JSON.
+
+The monitor reads from the server (`GET /api/ember/dates`, every second), so it works the same
+when the date runs on a real iPhone through the tunnel. It shows dates since the last server
+start.
 
 ## Configuration
 

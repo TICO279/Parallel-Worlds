@@ -14,7 +14,7 @@ function ago(at: number) {
   return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)} min ago` : time(at);
 }
 
-/** The web page watches the phone: every first date, live, with its branches and how she feels. Read-only. */
+/** The web page watches the phone: every first date, live, with its branches and how your date feels. Read-only. */
 export function Monitor() {
   const [dates, setDates] = useState<EmberDate[]>([]); const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export function Monitor() {
               <div className="card-top"><span className="eyebrow">{live ? 'ON A DATE NOW' : 'MET ON EMBER'}</span><span className="card-index">{String(date.sessions.length).padStart(2, '0')} SESSIONS</span></div>
               <div className={`character-art ${live && session?.status === 'active' ? 'speaking' : ''}`} aria-hidden="true"><div className="orbit orbit-one"/><div className="orbit orbit-two"/>
                 {date.scenario.image ? <img className="character-photo" src={date.scenario.image} alt="" /> : <div className="character-monogram">{name[0]}<span>✳</span></div>}
-                <span className="art-caption">WHAT SHE KNOWS COMES FROM BOTH PROFILES.</span></div>
+                <span className="art-caption">WHAT THEY KNOW COMES FROM BOTH PROFILES.</span></div>
               <div className="character-copy"><span className="eyebrow">YOUR DATE</span><h2 id="character-title">{name}</h2><p>{date.scenario.character.description}</p>
                 <div className="traits">{date.scenario.character.traits.slice(0, 4).map(t => <span key={t}>{t}</span>)}</div></div>
               <div className="setting"><span>THE SETTING</span><p>{date.scenario.setting}</p></div>
@@ -95,7 +95,7 @@ export function Monitor() {
                 {!path.length ? <div className="empty-transcript"><h3>Nobody has spoken yet.</h3><p>{live ? `${name} may open, or say hi from the phone.` : 'Start the date on the phone.'}</p><span className="empty-line"/></div>
                   : path.map(t => <article className={`turn ${t.role}`} key={t.id}>
                     <div className="turn-heading"><strong>{t.role === 'user' ? 'YOU' : name.toUpperCase()}</strong>
-                      {stars.has(t.id) && <span className="star-note">★ shifted how she feels</span>}<time>{time(t.createdAt)}</time></div>
+                      {stars.has(t.id) && <span className="star-note">★ shifted how they feel</span>}<time>{time(t.createdAt)}</time></div>
                     <p>{lineText(t)}</p>
                     {t.status === 'interrupted' && <small className="turn-note">Interrupted · {(t.playedMs ?? 0).toFixed(0)} ms played · not replayed after a rewind.</small>}
                   </article>)}
