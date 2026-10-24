@@ -679,6 +679,24 @@ h1, h2, p { margin: 0; }
   color: #fff;
   background: linear-gradient(90deg, #ff7854, #ff2d55);
 }
+.match-date {
+  width: 100%;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  background: radial-gradient(circle at 50% 0%, #3e7fe0 0%, #1f3f8f 60%, #13224d 100%);
+  border: 2px solid rgba(160, 205, 255, 0.85);
+  box-shadow: 0 0 18px rgba(90, 168, 255, 0.55), inset 0 0 12px rgba(255, 181, 71, 0.25);
+}
+.match-date svg { width: 32px; height: 21px; flex: none; }
+.match-date:active { transform: scale(0.98); }
 .linkish {
   margin-top: 14px;
   background: none;

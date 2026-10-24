@@ -654,6 +654,7 @@ function matchView() {
       <input class="match-input" name="text" maxlength="140" placeholder="Say something nice…" autocomplete="off" />
       <button type="submit" class="send-wide">Send</button>
     </form>
+    <button type="button" class="match-date" data-action="first-date" data-id="${p.id}">${icon.rings}<span>Simulate our first date</span></button>
     <button type="button" class="linkish" data-action="keep-swiping">Keep Swiping</button>
   </div>`;
 }
