@@ -99,6 +99,13 @@ export class RingPlayer {
     this.onSpeakingChange?.(true);
   }
 
+  /** Hand raw PCM16 bytes (e.g. streamed from text-to-speech) to the ring buffer. */
+  enqueuePcm(bytes: ArrayBuffer): void {
+    if (!this.node) return;
+    this.node.port.postMessage({ type: "samples", payload: bytes }, [bytes]);
+    this.onSpeakingChange?.(true);
+  }
+
   /**
    * Zero the played-sample counter. Call at the start of each assistant turn,
    * so `flush()` reports milliseconds into *this* reply rather than into the

@@ -1,4 +1,4 @@
-import { metricNames, type AdaptationData, type DynamicCharacterState, type LatencyRecord } from '../shared/characterState';
+import { metricNames, relationshipNames, type AdaptationData, type DynamicCharacterState, type LatencyRecord } from '../shared/characterState';
 export function AdaptivePanel({ character, data, latency, notice, connected = false, preview, restored = false }: {
   character: string; data: AdaptationData | null; latency: LatencyRecord | null; notice: string | null;
   connected?: boolean; preview?: DynamicCharacterState; restored?: boolean;
@@ -7,6 +7,8 @@ export function AdaptivePanel({ character, data, latency, notice, connected = fa
   const adaptive = data ? data.mode === 'adaptive' : true;
   const state = preview ?? (adaptive ? data?.states.at(-1) : undefined); const attempt = preview ? undefined : data?.attempts.at(-1);
   const prior = preview ? undefined : data?.states.at(-2);
+  const judgment = preview ? undefined : data?.judgments?.at(-1); const voice = preview ? undefined : data?.voices?.at(-1);
+  const relationship = state?.relationship; const priorRelationship = prior?.relationship;
   const acknowledged = preview ? undefined : data?.states.find(s => s.version === data.appliedVersion);
   const realism = state?.realism; const assessment = realism?.assessment;
   const behavior = state?.behavior ?? data?.states.at(-1)?.behavior;
@@ -31,7 +33,19 @@ export function AdaptivePanel({ character, data, latency, notice, connected = fa
         <p className="adaptive-disclaimer">Saved seed reproduces application decisions, not exact model wording. In automatic voice mode the proposed action is recorded for inspection; persistent disposition and concerns guide future replies.</p>
         {responsePlan && <p><strong>Directed response:</strong> {responsePlan.status} · {responsePlan.contract.action} · {responsePlan.contextHash.slice(0, 12)}</p>}
       </details>}
-      {state && <><div className="state-metrics">{metricNames.map(name => {
+      {relationship && <><p><strong>Relationship</strong> (Jev nudges every line; a major shift moves them more)</p>
+        <div className="state-metrics relationship-metrics">{relationshipNames.map(name => {
+          const delta = priorRelationship ? Math.round((relationship[name] - priorRelationship[name]) * 100) : undefined;
+          return <label key={name}>{name}<meter min={0} max={100} value={relationship[name] * 100}/><b>{Math.round(relationship[name] * 100)} / 100</b>
+            {delta ? <small> · {delta > 0 ? '+' : ''}{delta}</small> : null}</label>;
+        })}</div>
+        <p><strong>Mood:</strong> tension {Math.round(relationship.tension * 100)} / 100 · warmth {relationship.warmth >= 0 ? '+' : ''}{relationship.warmth.toFixed(2)}
+          {relationship.lastShift && <> · last shift: {relationship.lastShift.event.replace(/_/g, ' ')}{relationship.lastShift.major ? ' (major)' : ''}</>}</p></>}
+      {judgment && <p><strong>Last judgment ({judgment.provider}{judgment.model ? ` · ${judgment.model}` : ''}):</strong> {judgment.error ? `failed (${judgment.error}), treated as ordinary`
+        : `${judgment.major ? 'major shift' : 'ordinary'} · P(major) ${judgment.majorShift.toFixed(2)} · ${judgment.event.replace(/_/g, ' ')}${judgment.appraised ? ` · full appraisal ${judgment.appraised}` : ''}`} · {judgment.latencyMs} ms</p>}
+      {voice && <p><strong>Voice emotions:</strong> {voice.sentences.map(v => `${v.emotion} (${v.probability.toFixed(2)})`).join(' → ')} · decided in {voice.decisionMs} ms
+        {voice.ttsFirstAudioMs !== undefined && <> · TTS first audio {voice.ttsFirstAudioMs} ms</>}{voice.error && <> · {voice.error}</>}</p>}
+      {state && <><p><strong>Appraisal scores</strong> (DeepSeek; updated on major shifts)</p><div className="state-metrics">{metricNames.map(name => {
         const delta = prior ? Math.round((state[name] - prior[name]) * 100) : undefined;
         return <label key={name}>{name}<meter min={0} max={100} value={state[name] * 100}/><b>{Math.round(state[name] * 100)} / 100</b>
           {delta !== undefined && <small> · {delta > 0 ? '+' : ''}{delta} points</small>}

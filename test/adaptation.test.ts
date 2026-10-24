@@ -5,6 +5,7 @@ import { adaptationConfig } from '../server/adaptation/config';
 import { MockAppraisalProvider, OpenAIAppraisalProvider, type AppraisalInput, type AppraisalProvider } from '../server/adaptation/providers';
 import { AdaptationCoordinator, appraisalContext } from '../server/adaptation/coordinator';
 import { ConversationStore } from '../server/store';
+import { branchTurns } from '../server/branching';
 import { buildContext, scenarios } from '../server/orchestrator';
 import type { Turn } from '../shared/domain';
 import evaluation from './fixtures/adaptation-evaluation.json';
@@ -140,6 +141,28 @@ describe('ordered state coordination and persistence', () => {
     const data = h.coordinator.get(h.id); data.states.push(transitionState(data.states[0], proposal, turn('other', 1), 0, 3, .1)); h.store.setAdaptation(h.id, data);
     resolve(proposal); await h.coordinator.enqueue(h.id);
     expect(h.coordinator.current(h.id).lastProcessedTurnId).toBe('other'); expect(h.coordinator.get(h.id).attempts[0].status).toBe('failed');
+  });
+  it('sends the whole trajectory, replayed branch lines first, up to the configured cap', () => {
+    const replay = branchTurns([{ nodeId: 'old/u0', sessionId: 'old', itemId: 'u0', role: 'user', text: 'Branch line.' },
+      { nodeId: 'old/a0', sessionId: 'old', itemId: 'a0', role: 'assistant', text: 'Branch reply.' }]);
+    const live = Array.from({ length: 10 }, (_, i) => turn(`u${i + 1}`, i, `Line ${i + 1}`));
+    expect(appraisalContext([...replay, ...live], 10, 's', 60).map(t => t.text)).toEqual(['Branch line.', 'Branch reply.', ...live.map(t => t.text)]);
+    expect(appraisalContext([...replay, ...live], 10, 's', 3).map(t => t.text)).toEqual(['Line 8', 'Line 9', 'Line 10']);
+    expect(adaptationConfig({}).contextLines).toBe(60);
+    expect(adaptationConfig({ APPRAISAL_CONTEXT_LINES: '120' }).contextLines).toBe(120);
+    expect(() => adaptationConfig({ APPRAISAL_CONTEXT_LINES: '1' })).toThrow('APPRAISAL_CONTEXT_LINES');
+    expect(adaptationConfig({}).decision).toMatchObject({ provider: 'mock', majorThreshold: .7 });
+    expect(adaptationConfig({ OPENROUTER_API_KEY: 'k' }).decision).toMatchObject({ provider: 'jev', model: 'typesafe/jev-1.14', key: 'k',
+      url: 'https://api.tokenrouter.com/api/alpha/decisions' });
+    expect(adaptationConfig({ OPENROUTER_API_KEY: 'k', DECISION_PROVIDER: 'mock' }).decision?.provider).toBe('mock');
+    expect(adaptationConfig({ APPRAISAL_PROVIDER: 'deepseek', DEEPSEEK_API_KEY: 'ds', JEV_API_KEY: 'k' }).decision)
+      .toMatchObject({ provider: 'deepseek', model: 'deepseek-flash', key: 'ds', url: 'https://api.deepseek.com/chat/completions' });
+    expect(() => adaptationConfig({ DECISION_PROVIDER: 'deepseek' })).toThrow('DEEPSEEK_API_KEY');
+    expect(() => adaptationConfig({ DECISION_PROVIDER: 'jev' })).toThrow('JEV_API_KEY');
+    expect(() => adaptationConfig({ OPENROUTER_API_KEY: 'k', JEV_URL: 'http://x' })).toThrow('https');
+    expect(adaptationConfig({}).appraisalTrigger).toBe('major_shift');
+    expect(adaptationConfig({ APPRAISAL_TRIGGER: 'every_turn' }).appraisalTrigger).toBe('every_turn');
+    expect(adaptationConfig({}).speech).toEqual({ model: 'higgs-tts-3', voice: 'default', timeoutMs: 15000 });
   });
   it('omits interrupted/unfinalized assistant text from bounded appraisal context', () => {
     expect(appraisalContext([{ ...turn('a1'), role: 'assistant', status: 'interrupted' }, turn('u1', 1)], 2)).toEqual([{ role: 'user', text: 'I enjoy pottery.' }]);

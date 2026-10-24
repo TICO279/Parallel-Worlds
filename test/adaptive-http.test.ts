@@ -101,4 +101,51 @@ describe('adaptive HTTP integration', () => {
     for(const extra of [{variation:2},{variation:'random'},{behaviorSeed:''},{controlledText:'yes'},{controlledText:true,mode:'static'}])
       expect((await request('/api/sessions','POST',{scenarioId:'alex-first-date',mode:'adaptive',...extra})).status).toBe(400);
   });
+  it('judges a recorded line: ordinary lines nudge the relationship, insults trigger the full appraisal and new instructions', async () => {
+    const id = (await request('/api/sessions', 'POST', { scenarioId: 'alex-first-date' })).body.session.id;
+    const user = (itemId: string, order: number, text: string) => ({ itemId, order, role: 'user', text, status: 'complete', transcriptFinal: true, startedAt: 1, updatedAt: 2 });
+    expect((await request(`/api/sessions/${id}/judge`, 'POST', { turnId: 'u1' })).status).toBe(409);
+    await request(`/api/sessions/${id}/conversation`, 'PUT', { revision: 1, turns: [user('u1', 0, 'I went hiking last weekend.')] });
+    const ordinary = await request(`/api/sessions/${id}/judge`, 'POST', { turnId: 'u1' });
+    expect(ordinary.body).toMatchObject({ major: false, stateVersion: 1 }); expect(ordinary.body.instructions).toBeUndefined();
+    await request(`/api/sessions/${id}/conversation`, 'PUT', { revision: 2, turns: [user('u1', 0, 'I went hiking last weekend.'), user('u2', 1, 'Haha just kidding, you are kind of stupid.')] });
+    const major = await request(`/api/sessions/${id}/judge`, 'POST', { turnId: 'u2' });
+    expect(major.body).toMatchObject({ major: true, event: 'offensive_joke' }); expect(major.body.instructions).toContain('You are Alex');
+    expect((await request(`/api/sessions/${id}/judge`, 'POST', {})).status).toBe(400);
+    const data = await request(`/api/sessions/${id}/adaptation`);
+    expect(data.body.decision).toMatchObject({ provider: 'mock' });
+    expect(data.body.judgments.map((j: { major: boolean }) => j.major)).toEqual([false, true]);
+    expect(data.body.attempts.map((a: { turnId: string }) => a.turnId)).toEqual(['u2']);
+  });
+});
+describe('speech route', () => {
+  let server: Server; let base: string; const calls: { url: string; body: any; auth: string }[] = [];
+  beforeAll(async () => {
+    const speechFetcher = (async (url: string, init: RequestInit) => {
+      calls.push({ url, body: JSON.parse(String(init.body)), auth: (init.headers as Record<string, string>).Authorization });
+      return new Response(new ReadableStream({ start(c) { c.enqueue(new Uint8Array([1, 2, 3])); c.enqueue(new Uint8Array([4])); c.close(); } }), { status: 200 });
+    }) as unknown as typeof fetch;
+    const app = createApp({ apiKey: 'boson-server-key', dist: '__missing_dist__', speechFetcher,
+      fetcher: async () => new Response(JSON.stringify({ value: 'bai-eph-test', expires_at: 9999999999 })) });
+    server = await new Promise<Server>(resolve => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
+    base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  });
+  afterAll(() => new Promise<void>((resolve, reject) => server.close(e => e ? reject(e) : resolve())));
+  it('streams Higgs TTS 3 PCM for a reply tagged with the chosen emotions and records the voice', async () => {
+    const post = (path: string, body: unknown) => fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const id = (await (await post('/api/sessions', { scenarioId: 'alex-first-date' })).json()).session.id;
+    const response = await post(`/api/sessions/${id}/speech`, { replyItemId: 'a1', text: 'Nice to meet you. I like this café.' });
+    expect(response.status).toBe(200); expect(response.headers.get('content-type')).toBe('audio/pcm');
+    expect([...new Uint8Array(await response.arrayBuffer())]).toEqual([1, 2, 3, 4]);
+    expect(calls[0]).toMatchObject({ url: 'https://api.boson.ai/v1/audio/speech', auth: 'Bearer boson-server-key',
+      body: { model: 'higgs-tts-3', voice: 'default', response_format: 'pcm', stream: true, input: 'Nice to meet you. I like this café.' } });
+    const data = await (await fetch(`${base}/api/sessions/${id}/adaptation`)).json();
+    expect(data.voices.at(-1)).toMatchObject({ replyItemId: 'a1', provider: 'mock', ttsFirstAudioMs: expect.any(Number) });
+    expect((await post(`/api/sessions/${id}/speech`, { replyItemId: 'a2', text: '' })).status).toBe(400);
+  });
+  it('configures Higgs to reply in text so TTS can voice it', async () => {
+    const boot = await (await fetch(base + '/api/sessions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'alex-first-date' }) })).json();
+    expect(boot.config.session.output_modalities).toEqual(['text']);
+    expect(boot.config.session.instructions).toContain('spoken aloud by a voice engine');
+  });
 });

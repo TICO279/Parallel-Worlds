@@ -50,4 +50,11 @@ describe('conversation reducer', () => {
     reduceTranscript(s, { type: 'client.interrupted', item_id: 'a1', played_ms: 100 }, 99);
     expect(s).toEqual(before); expect(replay(recorded)).toEqual(replay(recorded));
   });
+  it('drops a discarded reply and ignores its late events', () => {
+    const state = replay([{ type: 'conversation.item.added', item: { id: 'u1', role: 'user', content: [{ type: 'input_text', text: 'Hi' }] } },
+      { type: 'response.output_item.added', item: { id: 'a1', type: 'message', role: 'assistant' } },
+      { type: 'client.discarded', item_id: 'a1' }, final('a1', 'Unheard.'),
+      { type: 'response.output_item.added', item: { id: 'a2', type: 'message', role: 'assistant' } }, final('a2', 'Heard.')]);
+    expect(orderedTurns(state).map(t => [t.itemId, t.text, t.order])).toEqual([['u1', 'Hi', 0], ['a2', 'Heard.', 1]]);
+  });
 });

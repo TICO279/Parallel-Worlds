@@ -18,10 +18,16 @@ function reorder(s: Conversation): void {
 /** Provider events become domain state here; no clock, I/O, or React dependencies. */
 export function reduceTranscript(before: Conversation, e: ProtocolEvent, now: number): Conversation {
   if (e.event_id && before.seen[e.event_id]) return before;
-  const s: Conversation = { order: [...before.order], items: { ...before.items }, seen: { ...before.seen } };
-  if (e.event_id) s.seen[e.event_id] = true;
   const item = obj(e.item); const response = obj(e.response);
   const id = str(e.item_id) ?? str(item.id);
+  // A reply replaced before anyone heard it: late events for it must not bring it back.
+  if (id && before.discarded?.[id]) return before;
+  const s: Conversation = { order: [...before.order], items: { ...before.items }, seen: { ...before.seen }, ...(before.discarded && { discarded: { ...before.discarded } }) };
+  if (e.event_id) s.seen[e.event_id] = true;
+  if (e.type === 'client.discarded' && id) {
+    s.discarded = { ...s.discarded, [id]: true }; s.order = s.order.filter(o => o !== id); delete s.items[id];
+    s.order.forEach((o, order) => { s.items[o] = { ...s.items[o], order }; }); return s;
+  }
   const ensure = (role: Turn['role']) => {
     if (!id) return undefined;
     if (!s.items[id]) {
@@ -52,12 +58,20 @@ export function reduceTranscript(before: Conversation, e: ProtocolEvent, now: nu
     case 'conversation.item.input_audio_transcription.failed': {
       const t = ensure('user'); if (t) { t.text = null; t.transcriptionFailed = true; t.transcriptFinal = false; t.status = 'incomplete'; } break;
     }
+    case 'response.output_text.delta':
     case 'response.output_audio_transcript.delta': {
       const t = ensure('assistant'); if (t && !t.transcriptFinal) t.text = (t.text ?? '') + (str(e.delta) ?? ''); break;
     }
+    case 'client.reply': {
+      // A reply enters the transcript only when it is spoken; its text is already final.
+      const t = ensure('assistant');
+      if (t) { t.text = str(e.text) ?? ''; t.transcriptFinal = true; t.status = 'complete'; t.completedAt = now; }
+      break;
+    }
+    case 'response.output_text.done':
     case 'response.output_audio_transcript.done': {
       const t = ensure('assistant'); if (t) {
-        t.text = str(e.transcript) ?? t.text; t.transcriptFinal = true; t.completedAt = now;
+        t.text = str(e.transcript) ?? str(e.text) ?? t.text; t.transcriptFinal = true; t.completedAt = now;
         if (t.status !== 'interrupted') t.status = 'complete';
       } break;
     }

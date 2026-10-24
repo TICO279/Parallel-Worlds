@@ -16,7 +16,7 @@ export interface Turn {
   startedAt: number; updatedAt: number; completedAt?: number; playedMs?: number;
   branchId?: string; parentBranchId?: string; forkTurnId?: string; characterStateSnapshot?: CharacterState;
 }
-export interface Conversation { order: string[]; items: Record<string, Turn>; seen: Record<string, true>; }
+export interface Conversation { order: string[]; items: Record<string, Turn>; seen: Record<string, true>; discarded?: Record<string, true>; }
 /** One line in the rehearsal tree. Siblings are alternative branches from the same point. */
 export interface TreeNode {
   id: string; parentId: string | null; sessionId: string; role: 'user' | 'assistant';
