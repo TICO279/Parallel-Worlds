@@ -63,4 +63,21 @@ describe('HTTP application', () => {
     expect((await fetch(`${base}/api/scenarios`, { headers: { Origin: 'https://external.example' } })).status).toBe(403);
     expect((await fetch(`${base}/api/sessions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{' })).status).toBe(400);
   });
+  for (const port of [3000, 5173, 5174]) for (const host of ['127.0.0.1', 'localhost']) {
+    it(`accepts local frontend requests from ${host}:${port}`, async () => {
+      const origin = `http://${host}:${port}`;
+      const health = await fetch(`${base}/api/health`, { headers: { Origin: origin, 'Sec-Fetch-Site': 'same-origin' } });
+      expect(health.status).toBe(200);
+      const response = await fetch(`${base}/api/sessions`, { method: 'POST',
+        headers: { Origin: origin, 'Sec-Fetch-Site': 'same-origin', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenarioId: scenarios[0].id }) });
+      expect(response.status).toBe(201);
+    });
+  }
+  it('still rejects unapproved local ports, deceptive hosts and cross-site browser requests', async () => {
+    for (const origin of ['http://localhost:5175', 'http://127.0.0.1:9999', 'http://localhost.attacker.example:5174', 'http://127.0.0.1.attacker.example:5174', 'http://localhost:5174@attacker.example', 'null']) {
+      expect((await fetch(`${base}/api/health`, { headers: { Origin: origin } })).status).toBe(403);
+    }
+    expect((await fetch(`${base}/api/health`, { headers: { Origin: 'http://localhost:5174', 'Sec-Fetch-Site': 'cross-site' } })).status).toBe(403);
+  });
 });

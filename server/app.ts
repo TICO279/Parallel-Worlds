@@ -12,6 +12,10 @@ const metricPayload = z.strictObject({ turnId: z.string().max(200), responseId: 
   speechEndedAt: z.number().finite().optional(), speechStoppedAt: z.number().finite().optional(), transcriptFinalAt: z.number().finite().optional(),
   responseCreatedAt: z.number().finite().optional(), firstAudioAt: z.number().finite().optional(), playbackStartedAt: z.number().finite().optional(),
   appliedStateVersion: z.number().int().nonnegative() });
+// Explicit local frontend origins, including the supported alternate Vite port.
+// Do not accept arbitrary loopback ports or hosts that merely start with localhost.
+const localOrigins = new Set([3000, 5173, 5174].flatMap(port =>
+  [`http://127.0.0.1:${port}`, `http://localhost:${port}`]));
 export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider } = {}) {
   const app = express(); const store = options.store ?? new ConversationStore();
   const coordinator = new AdaptationCoordinator(store, scenarios, options.adaptation ?? adaptationConfig({}), options.provider);
@@ -20,7 +24,7 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
   // Local app: reject cross-origin writes; do not provide a public token minting service.
   app.use('/api', (req, _res, next) => {
     const origin = req.get('origin');
-    if (origin && !['http://127.0.0.1:5173', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://localhost:3000'].includes(origin))
+    if (origin && !localOrigins.has(origin))
       return next(new ApiError(403, 'Only the local application can use this API.'));
     if (req.get('sec-fetch-site') === 'cross-site') return next(new ApiError(403, 'Cross-site requests are not allowed.'));
     next();

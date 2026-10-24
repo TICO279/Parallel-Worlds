@@ -17,6 +17,14 @@ generated audio steering and the mock-appraisal integration. Human voice testing
 Requirements: **Node.js 24 LTS** and **pnpm 11+**. The lockfile records tested versions.
 On this workstation pnpm is bundled with Codex; npm is not on PATH.
 
+For everyday testing with one address, run `pnpm build` after code changes, then
+`pnpm start` and open **http://127.0.0.1:3000/**. This serves the frontend and API
+from one process. If it is already running, use the existing page instead of starting
+another copy. Stop your running command with Ctrl+C before restarting it.
+
+The development workflow below uses a separate Vite frontend for automatic updates
+while editing source files. Use it instead of the single-server workflow, not alongside it.
+
 ```powershell
 cd E:\BosonAI\Parallel-Worlds
 pnpm install --frozen-lockfile
@@ -46,9 +54,18 @@ pnpm start  # after build: frontend and API at http://127.0.0.1:3000/
 ```
 
 The API binds to `127.0.0.1:3000`; Vite proxies `/api` in development.
-After changing `.env`, press **Ctrl+C** in the terminal running `pnpm dev`, then run
-`pnpm dev` again and refresh the browser. If running the backend separately, restart
-only its terminal with `pnpm dev:server`; the frontend can stay running.
+Vite uses port `5173` and stops with an error if it is occupied instead of silently
+moving to another port. To use the supported alternate port, run `pnpm dev:server`
+in one terminal and `pnpm dev:web --port 5174` in another. Both `127.0.0.1` and
+`localhost` origins are accepted on frontend ports `5173`, `5174`, and production
+port `3000`; other origins remain blocked.
+Port `3000` serves the last built frontend, while Vite serves the current source.
+After pulling frontend changes, run `pnpm build` and refresh to update the interface
+served on port `3000`.
+After changing `.env`, press **Ctrl+C** in the terminal running the app, then rerun
+`pnpm start` for the single-server workflow or `pnpm dev` for development, and refresh
+the browser. If running the development backend separately, restart only its terminal
+with `pnpm dev:server`; the frontend can stay running.
 Run commands from the repository root. `start` uses the TypeScript runtime in dev
 dependencies, so do not install with `--prod`. The project-local pnpm store and hoisted
 linker avoid Windows shared-store symlink restrictions. No database or Docker is needed.
@@ -156,7 +173,9 @@ See [docs/experiments.md](docs/experiments.md) for live acceptance and next expe
 | --- | --- |
 | Missing key | Populate root `.env` and restart the backend. Never use a `VITE_` prefix for the key. |
 | Rejected/expired credentials | Check key, account access and credit; reconnect for a fresh ephemeral credential. |
-| Local server unavailable | Run `pnpm dev` from the root; ensure ports 3000 and 5173 are free. |
+| Local server unavailable | Run `pnpm start` from the root after building; ensure port 3000 is free. For development, use `pnpm dev` with ports 3000 and 5173 free. |
+| Only the local application can use this API | Use localhost or 127.0.0.1 on port 5173, 5174 or 3000; restart the backend after updating it. |
+| Interface on port 3000 looks outdated | Run `pnpm build`, then refresh. During development use the Vite URL on port 5173 (or explicitly configured 5174). |
 | No mic level | Enable the microphone, grant permission and check the OS input device. Use localhost. |
 | No playback | Connect via the button to unlock audio; check output volume/device. Unsupported 24 kHz playback is rejected to preserve timing. |
 | Self-interruption | Use headphones; echo cancellation is enabled but room conditions still matter. |
