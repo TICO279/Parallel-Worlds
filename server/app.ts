@@ -1,6 +1,7 @@
 import { registerDatingReview } from './datingReview';
 import express, { type ErrorRequestHandler } from 'express';
 import { existsSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { scenarios, buildContext } from './orchestrator';
 import { ApiError, buildHiggsConfig, mintCredential } from './higgs';
@@ -48,7 +49,9 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     next();
   });
   app.use(express.json({ limit: '2mb' }));
-  app.get('/api/health', (_req, res) => res.json({ ok: true, credentialsConfigured: Boolean(options.apiKey?.trim()) }));
+  // New on every start: the phone forgets its conversations when the server it talks to has restarted.
+  const bootId = randomUUID();
+  app.get('/api/health', (_req, res) => res.json({ ok: true, credentialsConfigured: Boolean(options.apiKey?.trim()), bootId }));
   app.get('/api/scenarios', (_req, res) => res.json(scenarios));
   // Dates started from Ember (phone), grouped by partner, so the lab can show their trees and scores.
   app.get('/api/ember/dates', (_req, res) => {

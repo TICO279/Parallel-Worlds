@@ -1109,6 +1109,17 @@ app.addEventListener("pointerup", onPointerUp);
 app.addEventListener("pointercancel", onPointerUp);
 document.addEventListener("keydown", onKey);
 loadState();
+// A restarted app means a fresh start: forget dates, matches and chats, keep your profile.
+// Mirrors src/freshStart.ts, which the date screen uses.
+const BOOT_KEY = "parallel-worlds.server-boot.v1";
+const CONVERSATION_KEYS = ["parallel-worlds.phone-trees.v1", "parallel-worlds.phone-stars.v1", "ember.state.v1"];
+fetch("/api/health").then((response) => response.json()).then(({ bootId }) => {
+  if (typeof bootId !== "string" || !bootId || localStorage.getItem(BOOT_KEY) === bootId) return;
+  const had = CONVERSATION_KEYS.some((key) => localStorage.getItem(key) !== null);
+  CONVERSATION_KEYS.forEach((key) => localStorage.removeItem(key));
+  localStorage.setItem(BOOT_KEY, bootId);
+  if (had) window.location.reload();
+}).catch(() => { /* server unreachable or storage blocked: keep what is there */ });
 const back = /^#profile=([a-z]+)$/.exec(window.location.hash)?.[1];
 if (back && byId[back]) {
   state.detailId = back;
