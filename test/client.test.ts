@@ -88,4 +88,29 @@ describe('Higgs adapter with mocked transport and audio', () => {
     expect(h.opts.onError).toHaveBeenCalledWith(expect.stringContaining('Allow microphone'));
     expect(h.client.connectionState).toBe('ready'); await h.client.disconnect();
   });
+  it('replays branch history after acknowledgement and before microphone audio', async () => {
+    const item = { type: 'conversation.item.create', item: { type: 'message', id: 'pwseed_0', role: 'user', content: [] } };
+    const h = harness({ seed: () => [item] }); await h.client.connect(); h.socket.open();
+    expect(h.socket.sent).toEqual([{ type: 'session.update' }]);
+    h.socket.receive({ type: 'session.created' }); await h.client.toggleMic(); h.chunk('pcm');
+    expect(h.socket.sent).toEqual([{ type: 'session.update' }, item, { type: 'input_audio_buffer.append', audio: 'pcm' }]);
+    await h.client.disconnect();
+  });
+  it('starts the microphone on acknowledgement when autoMic is set', async () => {
+    const h = harness({ autoMic: true }); await h.client.connect(); h.socket.open();
+    expect(h.mic.start).not.toHaveBeenCalled();
+    h.socket.receive({ type: 'session.created' }); await vi.waitFor(() => expect(h.opts.onMic).toHaveBeenCalledWith(true));
+    h.chunk('pcm'); expect(h.socket.sent).toContainEqual({ type: 'input_audio_buffer.append', audio: 'pcm' });
+    await h.client.disconnect();
+  });
+  it('sends a typed turn and requests a reply only once the session is ready', async () => {
+    const h = harness(); await h.client.connect(); h.socket.open();
+    expect(h.client.sendText('hi')).toBe(false);
+    h.socket.receive({ type: 'session.created' });
+    expect(h.client.sendText('   ')).toBe(false); expect(h.client.sendText('  Hello there ')).toBe(true);
+    expect(h.socket.sent.slice(1)).toEqual([
+      { type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Hello there' }] } },
+      { type: 'response.create' }]);
+    await h.client.disconnect();
+  });
 });

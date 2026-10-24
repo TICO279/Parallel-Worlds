@@ -15,6 +15,10 @@ export interface ClientOptions {
   onState(state: ConnectionState): void; onActivity(activity: Activity): void;
   onEvent(event: ProtocolEvent): void; onError(message: string): void;
   onMic(active: boolean): void; onLevel(level: number): void;
+  /** History to replay after the session is acknowledged and before any microphone audio. */
+  seed?: () => ProtocolEvent[];
+  /** Start the microphone as soon as the session is ready, so one click starts a spoken conversation. */
+  autoMic?: boolean;
   socketFactory?: (url: string, protocols: string[]) => WebSocket;
   playerFactory?: (drained: () => void, failure: (m: string) => void) => Player;
   micFactory?: (chunk: (b64: string) => void, level: (rms: number) => void) => Microphone;
@@ -90,7 +94,12 @@ export class HiggsClient {
     this.options.onEvent(event);
     switch (event.type) {
       case 'session.created': case 'session.updated':
-        if (this.state === 'connecting') { clearTimeout(this.timeout); this.setState('ready'); }
+        if (this.state === 'connecting') {
+          clearTimeout(this.timeout);
+          for (const item of this.options.seed?.() ?? []) this.send(item);
+          this.setState('ready');
+          if (this.options.autoMic) void this.toggleMic();
+        }
         break;
       case 'response.created': this.generating = true; this.options.onActivity('thinking'); break;
       case 'response.output_item.added': {
@@ -127,6 +136,15 @@ export class HiggsClient {
     if (gen !== this.gen) return;
     this.options.onEvent({ type: 'client.interrupted', item_id: id, played_ms: played });
     this.send(truncateItem(id, played));
+  }
+  /** A typed turn. Like speaking over the character, it interrupts any reply still playing. */
+  sendText(text: string): boolean {
+    if (this.state !== 'ready' || !text.trim()) return false;
+    void this.bargeIn(this.gen);
+    this.send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: text.trim() }] } });
+    this.send({ type: 'response.create' });
+    this.options.onActivity('thinking');
+    return true;
   }
   async toggleMic(): Promise<void> {
     if (this.state !== 'ready' || !this.mic) return;

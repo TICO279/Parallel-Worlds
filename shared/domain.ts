@@ -14,6 +14,12 @@ export interface Turn {
   branchId?: string; parentBranchId?: string; forkTurnId?: string; characterStateSnapshot?: CharacterState;
 }
 export interface Conversation { order: string[]; items: Record<string, Turn>; seen: Record<string, true>; }
+/** One line in the rehearsal tree. Siblings are alternative branches from the same point. */
+export interface TreeNode {
+  id: string; parentId: string | null; sessionId: string; role: 'user' | 'assistant';
+  text: string; status: TurnStatus; createdAt: number; playedMs?: number; transcriptionFailed?: boolean;
+}
+export interface ConversationTree { nodes: Record<string, TreeNode>; headId: string | null; }
 export type SessionStatus = 'connecting' | 'active' | 'closed' | 'error';
 export interface StoredSession {
   schemaVersion: 1; id: string; bosonSessionId?: string; scenarioId: string; characterId: string;

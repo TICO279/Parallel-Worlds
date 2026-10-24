@@ -20,8 +20,15 @@ pnpm dev
 
 Open **http://127.0.0.1:5173/**. Choose a scenario, click **Start conversation**,
 then **Enable microphone** and say hello. Allow microphone access in your browser.
-The user speaks first. Headphones improve interruption behavior. End the conversation
-before reconnecting; every connection starts a new conversation with empty context.
+The user speaks first. Headphones improve interruption behavior.
+
+**Branching.** After **End conversation**, click one of your own lines (in the transcript or
+the tree below it) and choose **Revert to this point**. The conversation returns to just
+before that line; the character's previous line stays. **Start new branch** opens a fresh
+session, replays the path up to that point as text, and you say something different. The
+old branch is kept, and the lower half of the conversation panel shows the whole tree with
+each branch point. Only your lines can be reverted: the character's reply follows from
+what you said. **Continue conversation** resumes the current path in a fresh session.
 
 ```powershell
 pnpm test
@@ -46,7 +53,8 @@ linker avoid Windows shared-store symlink restrictions. No database or Docker is
 | `server/higgs.ts` | Ephemeral credentials and mapping to Boson's session configuration |
 | `server/store.ts` | In-memory sessions, validated snapshots, revisions and turn notifications |
 | `server/app.ts` | Local HTTP API and production frontend serving |
-| `shared/` | Domain types and pure transcript reconciliation |
+| `shared/` | Domain types, pure transcript reconciliation and the branching conversation tree |
+| `src/TreeView.tsx`, `src/treeStorage.ts` | Tree panel; trees persist per scenario in browser storage |
 | `src/realtime/` | Socket lifecycle, acknowledgement gating, VAD and interruptions |
 | `src/audio/` | AudioWorklets, capture, resampling, PCM16 encoding and counted playback |
 | `src/recording.ts` | Serialized, retrying synchronization outside the audio path |
@@ -58,7 +66,7 @@ Audio flows directly between browser and Boson; the local server does not record
 relay it. Configuration uses `higgs-realtime`, `higgs-stt-3.1` transcription, 24 kHz mono
 PCM16, bare `server_vad`, and the built-in `default` voice. Profiles change instructions;
 both currently use the same voice preset. Character identity and optional mutable
-guidance are separate. No appraisal, emotion scores, branching, or rewind is implemented.
+guidance are separate. No appraisal or emotion scores are implemented.
 
 The permanent key stays server-side. Each connection gets a new 600-second ephemeral
 credential. Tokens never enter logs, the conversation store, or exports. Upstream
@@ -96,8 +104,13 @@ allowlists fields instead of retaining arbitrary protocol payloads.
 - Sessions live in **backend memory**. Export JSON before restarting the backend.
   Recording retries do not delay audio. Keep the tab open until a recording warning
   clears; abrupt process/tab termination can lose unsynced data.
-- Reserved optional branch/fork/state-reference fields support later work without
-  implementing branching, replay, rewind or comparative reasoning now.
+- The branching tree (`shared/tree.ts`) is separate from per-session transcripts and is
+  stored only in this browser, per scenario. Each session's finalized turns hang under the
+  node that was current when it started. A new session replays its path as text items
+  (`conversation.item.create`): Boson skips audio content, so tone is not replayed, and an
+  interrupted reply is replayed with its full generated text, including words never heard.
+  A live test on 2026-10-23 confirmed that a fresh session seeded this way remembers the
+  replayed facts. The server export still covers one session, not the tree.
 
 ## Probe and verification
 
@@ -138,7 +151,7 @@ See [docs/experiments.md](docs/experiments.md) for live acceptance and next expe
 | Premature turn ending | Follow the controlled VAD experiment; do not assume tutorial-era defaults. |
 | Recording warning | Keep the tab open and restore the server. A backend restart destroys its in-memory sessions. |
 | Playback overflow | Keep replies short. Overflow closes the session explicitly instead of silently dropping audio. |
-| Timeout/network drop | Reconnect to start fresh; automatic history replay is not implemented. |
+| Timeout/network drop | Click **Continue conversation**; the new session replays the current path. |
 
 Adapted from the [official Boson tutorial](https://github.com/boson-ai/Higgs-Realtime-Tutorial/tree/87f1ae81434d8a65126503ceef36871e0b529f5c).
 See [attribution](third-party/NOTICE.md) and the preserved [Apache 2.0 license](third-party/BOSON-LICENSE).
