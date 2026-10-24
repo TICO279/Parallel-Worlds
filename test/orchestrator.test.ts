@@ -9,7 +9,7 @@ describe('scenario orchestration', () => {
   });
   it('constructs Alex identity, values, motivation and setting from data', () => {
     const { instructions } = buildContext(scenarios[0]);
-    for (const value of ['Alex', 'honesty', 'reserved', 'compatibility', 'café', 'disagree kindly']) expect(instructions).toContain(value);
+    for (const value of ['Alex', 'honesty', 'reserved', 'compatibility', 'café', 'Keep your own preferences']) expect(instructions).toContain(value);
     expect(instructions).not.toContain('Current response guidance');
     expect(buildContext(scenarios[1]).instructions).toContain('Morgan');
   });

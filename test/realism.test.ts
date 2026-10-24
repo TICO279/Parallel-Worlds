@@ -141,7 +141,7 @@ describe('actor compilation, audit and configuration', () => {
     store.snapshot(s.id, 1, [{ itemId: 'u1', role: 'user', text: 'I enjoy pottery.', order: 0, status: 'complete', transcriptFinal: true, startedAt: 1, updatedAt: 1 }]); await c.enqueue(s.id);
     const prepared = c.instructions(s.id); const record = store.get(s.id).adaptation!.instructionHistory!.at(-1)!;
     expect(record.instructions).toBe(prepared.instructions); expect(record.contextHash).toBe(createHash('sha256').update(record.instructions).digest('hex'));
-    expect(c.current(s.id).realism).toMatchObject({ schemaVersion: 2, profileVersion: 'realism-1', compilerVersion: 'realism-1' });
+    expect(c.current(s.id).realism).toMatchObject({ schemaVersion: 2, profileVersion: 'realism-2', compilerVersion: 'agency-1' });
   });
   it('keeps state and memory unchanged on invalid asynchronous output', async () => {
     const store = new ConversationStore(); const c = new AdaptationCoordinator(store, scenarios, { provider: 'mock', model: '', timeoutMs: 1500, maxDelta: .1 }, {

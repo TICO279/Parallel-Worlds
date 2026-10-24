@@ -4,6 +4,7 @@ export interface AdaptationConfig {
   openAIKey?: string;
   deepSeekKey?: string;
   memoryCapacity?: number; memoryTextLimit?: number; maxOutputTokens?: number;
+  behaviorVariation?: number; behaviorSeed?: string;
 }
 function numberSetting(raw: string | undefined, fallback: number, low: number, high: number, name: string) {
   const value = raw === undefined || raw === '' ? fallback : Number(raw);
@@ -24,7 +25,10 @@ export function adaptationConfig(inherited: Record<string, string | undefined>, 
   if (provider === 'openai' && (env.APPRAISAL_OPENAI_PROJECT_KEY !== 'true' || !env.OPENAI_API_KEY?.trim()))
     throw new Error('OpenAI appraisal requires APPRAISAL_OPENAI_PROJECT_KEY=true and your project OPENAI_API_KEY.');
   if (provider === 'deepseek' && !env.DEEPSEEK_API_KEY?.trim()) throw new Error('DeepSeek appraisal requires your project DEEPSEEK_API_KEY.');
+  if (env.CHARACTER_BEHAVIOR_SEED && env.CHARACTER_BEHAVIOR_SEED.length > 128) throw new Error('CHARACTER_BEHAVIOR_SEED must be at most 128 characters.');
   return { provider, model: env.APPRAISAL_MODEL?.trim() || (provider === 'openai' ? 'gpt-6-luna' : 'deepseek-flash'),
+    behaviorVariation: numberSetting(env.CHARACTER_BEHAVIOR_VARIATION, provider === 'mock' ? 0 : .35, 0, 1, 'CHARACTER_BEHAVIOR_VARIATION'),
+    behaviorSeed: env.CHARACTER_BEHAVIOR_SEED?.trim() || undefined,
     memoryCapacity: integerSetting(env.CHARACTER_MEMORY_CAPACITY, 8, 1, 32, 'CHARACTER_MEMORY_CAPACITY'),
     memoryTextLimit: integerSetting(env.CHARACTER_MEMORY_TEXT_LIMIT, 160, 40, 160, 'CHARACTER_MEMORY_TEXT_LIMIT'),
     maxOutputTokens: integerSetting(env.APPRAISAL_MAX_OUTPUT_TOKENS, 1600, 600, 4000, 'APPRAISAL_MAX_OUTPUT_TOKENS'),

@@ -10,10 +10,21 @@ asynchronous instruction updates and a development panel. The page no longer off
 Static mode; the API still accepts `mode: "static"` for scripts and evaluations. See [Phase 2 configuration, live evidence and limitations](docs/phase2.md).
 The [tone and realism baseline](docs/realism-implementation.md) adds grounded appraisal,
 mixed reactions, bounded concern memory and saved instruction context. Current validation:
-**184 automated tests pass**, including all 42 baseline tests;
+**228 automated tests pass**, including all 42 baseline tests;
 type checking and production build pass. Live Boson checks cover instruction updates,
 generated audio steering, DeepSeek structured appraisal and static/adaptive text comparisons.
 Human voice testing and blinded realism ratings remain pending.
+
+The [independent behavior prototype](docs/agency-implementation.md) adds stronger profiles,
+seeded variation and a **Directed · typed experiment** mode. Directed replies wait for
+fresh appraisal and a saved acting contract; they take several seconds and disable the
+microphone. **Reply timing** defaults to **Automatic · voice and text**; both options
+use adaptive state. Static remains API-only for evaluation. Current-turn voice gating is
+still unqualified.
+
+Integration with upstream `97624c4` preserves the always-visible **Start over** button
+with a second-click confirmation and the `v2.1` sidebar version. Appraisal diagnostics
+record provider requests, status, timing and state versions without dialogue or credentials.
 
 ## Setup and launch
 

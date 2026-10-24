@@ -10,5 +10,5 @@ app.listen(3000, '127.0.0.1', () => {
   console.log('Parallel Worlds API: http://127.0.0.1:3000');
   if (!apiKey?.trim()) console.log('Add BOSON_API_KEY to .env and restart to enable live sessions.');
   log('appraisal', adaptation.provider === 'mock' ? 'provider=mock (keyword rules, no network). Set APPRAISAL_PROVIDER in .env to use a model.'
-    : `provider=${adaptation.provider} model=${adaptation.model} key=configured timeout=${adaptation.timeoutMs} ms. Only Adaptive mode sessions call it.`);
+    : `provider=${adaptation.provider} model=${adaptation.model} key=configured timeout=${adaptation.timeoutMs} ms. Adaptive sessions (including directed typing) call it.`, [apiKey, adaptation.deepSeekKey, adaptation.openAIKey]);
 });

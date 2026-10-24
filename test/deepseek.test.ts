@@ -125,6 +125,12 @@ describe('DeepSeek configuration and JSON adapter', () => {
     expect(body.max_tokens).toBe(1800); expect(body.messages[0].content).toContain('memoryOperations');
     await expect(providerFor(completion()).appraise({ ...input, turnId: 's/u1' }, new AbortController().signal)).rejects.toThrow('invalid structured output');
   });
+  it('records sanitized validation paths without retaining the invalid provider value', async () => {
+    const proposal=realismProposal('s/u1',input.utterance);const invalid={...proposal,brief:{...proposal.brief,move:'must-not-persist-secret'}};
+    try {await providerFor(completion(JSON.stringify(invalid))).appraise({...input,turnId:'s/u1'},new AbortController().signal);throw new Error('Unexpected validation success');}
+    catch(error){expect(error).toMatchObject({telemetry:{validationIssues:['invalid_value:brief.move']}});
+      expect(JSON.stringify(error)).not.toContain('must-not-persist-secret');}
+  });
 });
 
 describe('DeepSeek coordination and recording', () => {

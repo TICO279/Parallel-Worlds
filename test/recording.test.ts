@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SessionRecorder, type api } from '../src/recording';
 describe('recording queue', () => {
+  it('cancels directed waiting without abandoning the underlying recording write', async () => {
+    vi.useFakeTimers();let finish!:()=>void;
+    const request=vi.fn(()=>new Promise(resolve=>{finish=()=>resolve({});}));
+    const recorder=new SessionRecorder('s',vi.fn(),request as typeof api);recorder.snapshot([]);
+    const controller=new AbortController();const waiting=recorder.waitForSync(controller.signal);
+    const rejection=expect(waiting).rejects.toThrow();controller.abort();await vi.advanceTimersByTimeAsync(26);await rejection;
+    finish();await vi.advanceTimersByTimeAsync(0);expect(recorder.synced).toBe(true);recorder.dispose();vi.useRealTimers();
+  });
   it('serializes writes and coalesces snapshots without stale overwrites', async () => {
     let finish!: () => void; const bodies: any[] = [];
     const request = vi.fn(async (_url: string, init: RequestInit) => {

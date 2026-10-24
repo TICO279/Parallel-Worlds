@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { behaviorSnapshotSchema, type ResponsePlan } from './behavior';
 export const metricNames = ['comfort', 'trust', 'curiosity', 'engagement'] as const;
 export const toneSchema = z.enum(['reserved', 'warm', 'guarded', 'playful', 'neutral', 'focused']);
 const score = z.number().finite().min(0).max(1);
@@ -44,6 +45,7 @@ export const characterStateSchema = z.strictObject({
   comfort: score, trust: score, curiosity: score, engagement: score,
   tone: toneSchema, goal: z.string(), guidance: z.string(),
   realism: realismStateSchema.optional(),
+  behavior: behaviorSnapshotSchema.optional(),
 });
 export type DynamicCharacterState = z.infer<typeof characterStateSchema>;
 export const tokenUsageSchema = z.strictObject({
@@ -56,6 +58,8 @@ export interface AppraisalAttempt {
   turnId: string; baseVersion: number; status: 'committed' | 'failed' | 'stale';
   provider: string; latencyMs: number; at: number; error?: string; appraisal?: Appraisal | RealismAppraisal; stateVersion?: number;
   model?: string; usage?: TokenUsage;
+  validationIssues?: string[];
+  schemaProfile?: string;
 }
 export interface ApplicationRecord { version: number; at: number; status: 'acknowledged' | 'failed' | 'deferred' | 'dispatched'; }
 export interface InstructionRecord { version: number; contextHash: string; instructions: string; persistentInstructions: string;
@@ -73,4 +77,5 @@ export interface AdaptationData {
   states: DynamicCharacterState[]; attempts: AppraisalAttempt[]; applications: ApplicationRecord[];
   latencies: LatencyRecord[]; appliedVersion: number; pending: boolean;
   memoryCapacity?: number; maxOutputTokens?: number; instructionHistory?: InstructionRecord[];
+  controlledText?: boolean; responsePlans?: ResponsePlan[]; profileVersion?: string;
 }

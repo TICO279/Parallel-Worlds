@@ -6,3 +6,4 @@
 .realism-details{margin-top:14px;border-top:1px solid #d8decd;padding-top:10px}.realism-details summary{padding:8px 0}.realism-memory{padding-left:20px;line-height:1.7;overflow-wrap:anywhere}.realism-memory li{margin-top:7px}
 .restart-button{display:flex;gap:10px;justify-content:center;align-items:center;width:100%;margin-top:12px;padding:12px;border:1.5px solid #c9b48f;border-radius:5px;background:#fbf6ec;color:#6e5532;font-size:12px;font-weight:600}.restart-button:hover:not(:disabled){background:#f3eadb;border-color:#af8352}.restart-button.confirm{background:#f6e3d6;border-color:#c0705a;color:#7c3d26}
 .app-version{font-size:9px;font-weight:700;letter-spacing:.5px;color:#dce7cb}
+@media(max-width:600px){.sidebar-footer{display:flex;margin-top:16px;padding-top:12px}}

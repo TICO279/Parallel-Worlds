@@ -1,12 +1,13 @@
 import { characterStateSchema, metricNames, realismAppraisalSchema, type DynamicCharacterState, type MemoryNote } from '../../shared/characterState';
 import type { Turn } from '../../shared/domain';
 import { transitionState } from './engine';
+import { boundaryPressure } from './constraints';
 
 export interface EvidenceSource { turnId: string; role: 'user' | 'assistant'; text: string; order: number; }
 const normalized = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 /** One atomic, deterministic state+memory transaction. No model-generated IDs or timestamps. */
 export function transitionRealism(previous: DynamicCharacterState, raw: unknown, turn: Turn, timestamp: number,
-  maxDelta: number, sources: EvidenceSource[], capacity = 8, textLimit = 160): DynamicCharacterState {
+  maxDelta: number, sources: EvidenceSource[], capacity = 8, textLimit = 160, profileVersion = 'realism-1'): DynamicCharacterState {
   const appraisal = realismAppraisalSchema.parse(raw); const currentId = `${previous.sessionId}/${turn.itemId}`;
   const sourceMap = new Map(sources.map(s => [s.turnId, s]));
   const validate = (evidence: { turnId: string; quote: string }[]) => {
@@ -21,7 +22,7 @@ export function transitionRealism(previous: DynamicCharacterState, raw: unknown,
   const deltas = { ...appraisal.deltas };
   const repeated = sources.some(s => s.role === 'user' && s.order < turn.order && normalized(s.text) === normalized(turn.text!));
   if (repeated) { for (const name of metricNames) deltas[name] = Math.min(0, deltas[name]); policy.push('Repeated wording is not new positive evidence.'); }
-  const pressure = appraisal.event === 'boundary_pressure' || /you owe me|ignore your boundaries|shut up|idiot/i.test(turn.text!);
+  const pressure = boundaryPressure(turn.text!, appraisal.event, memory.some(n => n.category === 'boundary_pressure' && n.status === 'active'));
   const apology = appraisal.event === 'apology' || /\b(sorry|apologi[sz]e)\b/i.test(turn.text!);
   const activePressure = memory.filter(n => n.category === 'boundary_pressure' && n.status === 'active');
   const behavioralTrust = ['evidence', 'accountability', 'reciprocity', 'respectful_action'].includes(appraisal.event);
@@ -84,5 +85,5 @@ export function transitionRealism(previous: DynamicCharacterState, raw: unknown,
   const { memoryOperations: _operations, deltas: _deltas, ...assessment } = appraisal;
   return Object.freeze(characterStateSchema.parse({ ...next, realism: { schemaVersion: 2, memory, assessment,
     policy: [...new Set(policy)].slice(0, 12), evictedMemoryIds: evicted, briefTurnId: currentId,
-    profileVersion: 'realism-1', compilerVersion: 'realism-1' } }));
+    profileVersion, compilerVersion: 'agency-1' } }));
 }

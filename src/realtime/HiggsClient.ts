@@ -4,6 +4,8 @@ import { MicCapture } from '../audio/capture';
 import { describeClose, inputAudioAppend, truncateItem, WS_URL } from './protocol';
 import type { LatencyRecord } from '../../shared/characterState';
 import { SEED_PREFIX } from '../../shared/tree';
+import { DirectedText } from './DirectedText';
+import type { ResponsePlan } from '../../shared/behavior';
 export type ConnectionState = 'idle' | 'connecting' | 'ready' | 'closing' | 'closed';
 export type Activity = 'idle' | 'listening' | 'thinking' | 'speaking';
 export interface Player {
@@ -21,6 +23,9 @@ export interface ClientOptions {
   seed?: () => ProtocolEvent[];
   onApplication?: (version: number, status: 'acknowledged' | 'failed' | 'deferred' | 'dispatched') => void;
   onLatency?: (metric: LatencyRecord) => void;
+  prepareTypedResponse?: (turnId: string, signal: AbortSignal) => Promise<ResponsePlan>;
+  recordResponsePlan?: (plan: ResponsePlan, status: ResponsePlan['status'], responseId?: string) => Promise<void>;
+  onTypedBusy?: (busy: boolean) => void;
   socketFactory?: (url: string, protocols: string[]) => WebSocket;
   playerFactory?: (drained: () => void, failure: (m: string) => void, started: () => void) => Player;
   micFactory?: (chunk: (b64: string) => void, level: (rms: number) => void) => Microphone;
@@ -39,7 +44,17 @@ export class HiggsClient {
   private metrics = new Map<string, LatencyRecord>(); private responseTurns = new Map<string, string>();
   private inputMs = 0; private inputClock: { startMs: number; endMs: number; at: number }[] = [];
   private userEpoch = 0; private guidanceOverlap = false;
-  constructor(private options: ClientOptions) {}
+  private directed: DirectedText; private typedOrdinal = 0;
+  constructor(private options: ClientOptions) {
+    this.directed = new DirectedText({ send: e => this.send(e),
+      prepare: (id, signal) => options.prepareTypedResponse ? options.prepareTypedResponse(id, signal) : Promise.reject(new Error('Directed setup unavailable.')),
+      record: (plan, status, responseId) => options.recordResponsePlan ? options.recordResponsePlan(plan, status, responseId) : Promise.reject(new Error('Directed recording unavailable.')),
+      acknowledged: version => { this.appliedVersion = version;
+        if ((this.pendingInstructions?.version ?? Infinity) <= version) this.pendingInstructions = undefined;
+        options.onApplication?.(version, 'acknowledged'); },
+      busy: value => options.onTypedBusy?.(value), notice: message => options.onError(message),
+      failure: message => { options.onError(message); void this.disconnect(); } });
+  }
   get connectionState() { return this.state; }
   private setState(s: ConnectionState) { this.state = s; this.options.onState(s); }
   private send(event: ProtocolEvent) {
@@ -53,6 +68,7 @@ export class HiggsClient {
     this.latestUserId = undefined; this.currentResponseId = undefined; this.typedAt = undefined; this.metrics.clear(); this.responseTurns.clear();
     this.inputMs = 0; this.inputClock = [];
     this.userEpoch = 0; this.guidanceOverlap = false;
+    this.directed.close(); this.directed.enabled = false; this.typedOrdinal = 0;
     this.controller = new AbortController();
     const alive = () => gen === this.gen;
     const drained = () => { if (alive()) { this.queued = false; this.options.onActivity(this.generating ? 'thinking' : this.mic?.active ? 'listening' : 'idle'); this.applyWhenIdle(); } };
@@ -76,6 +92,7 @@ export class HiggsClient {
       const data = await this.options.bootstrap(this.controller.signal);
       if (!alive()) return;
       this.hadSession = true; this.options.onBootstrap(data);
+      this.directed.enabled = data.session.adaptation?.controlledText ?? false;
       const ws = this.options.socketFactory?.(WS_URL, ['realtime', `bai-client-secret.${data.credential.value}`])
         ?? new WebSocket(WS_URL, ['realtime', `bai-client-secret.${data.credential.value}`]);
       this.ws = ws;
@@ -113,7 +130,9 @@ export class HiggsClient {
     this.send(inputAudioAppend(audio));
   }
   private handle(event: ProtocolEvent, gen: number) {
+    if (!this.directed.accept(event)) return;
     this.options.onEvent(event);
+    this.directed.observe(event);
     switch (event.type) {
       case 'session.created': case 'session.updated':
         if (this.state === 'connecting') {
@@ -214,6 +233,7 @@ export class HiggsClient {
     this.applyWhenIdle();
   }
   private applyWhenIdle() {
+    if (this.directed.busy) { if (!this.generating && !this.queued) this.directed.idle(); return; }
     if (this.state !== 'ready' || this.generating || this.queued || this.userSpeaking || this.awaitingResponse || this.applying || !this.pendingInstructions || this.updateFailed) return;
     const update = this.pendingInstructions; this.pendingInstructions = undefined;
     if (update.epoch !== this.userEpoch && update.persistentInstructions) update.instructions = update.persistentInstructions;
@@ -241,16 +261,20 @@ export class HiggsClient {
   /** A typed turn, only while the microphone is off. Like speaking over the character, it interrupts any reply still playing. */
   sendText(text: string): boolean {
     if (this.state !== 'ready' || this.mic?.active || this.awaitingResponse || !text.trim()) return false;
+    if (this.directed.enabled && (this.directed.busy || this.generating || this.queued || this.applying)) return false;
     this.newUserTurn();
     void this.bargeIn(this.gen);
     this.awaitingResponse = true; this.typedAt = performance.now();
-    this.send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: text.trim() }] } });
-    this.send({ type: 'response.create' });
+    const id = this.directed.enabled ? `pwuser_${this.gen}_${++this.typedOrdinal}` : undefined;
+    if (id) this.directed.begin(id);
+    this.send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', ...(id && { id }), content: [{ type: 'input_text', text: text.trim() }] } });
+    if (!this.directed.enabled) this.send({ type: 'response.create' });
     this.options.onActivity('thinking');
     return true;
   }
   async toggleMic(): Promise<void> {
     if (this.state !== 'ready' || !this.mic) return;
+    if (this.directed.enabled) { this.options.onError('Directed mode is a typed experiment. Start an Adaptive or Static session to use the microphone.'); return; }
     const gen = this.gen; const mic = this.mic;
     try {
       if (mic.active) await mic.stop(); else await mic.start();
@@ -262,6 +286,7 @@ export class HiggsClient {
   async disconnect(): Promise<void> {
     if (this.closing) return this.closing;
     ++this.gen; clearTimeout(this.timeout); this.controller?.abort();
+    this.directed.close();
     if (this.applying) { clearTimeout(this.applying.timer); this.options.onApplication?.(this.applying.version, 'failed'); }
     this.applying = undefined; this.pendingInstructions = undefined;
     this.setState('closing');

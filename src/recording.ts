@@ -37,5 +37,15 @@ export class SessionRecorder {
     } finally { this.running = false; }
   }
   get synced() { return !this.running && !this.pending && !this.lifecycle; }
+  async waitForSync(signal: AbortSignal, timeoutMs = 10000): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (!this.synced) {
+      signal.throwIfAborted();
+      if (Date.now() > deadline || this.disposed) throw new Error('Recording is not synchronized.');
+      void this.flush();
+      if (!this.synced) await new Promise<void>(resolve => setTimeout(resolve, 25));
+    }
+    signal.throwIfAborted();
+  }
   dispose() { this.disposed = true; clearTimeout(this.timer); }
 }

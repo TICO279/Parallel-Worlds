@@ -26,6 +26,16 @@ function harness(overrides: Partial<ClientOptions> = {}) {
 }
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 describe('Higgs adapter with mocked transport and audio', () => {
+  it('records a directed user item once without prematurely creating a response or enabling the microphone', async () => {
+    const busy=vi.fn();const h=harness({onTypedBusy:busy,
+      bootstrap:async()=>({session:{id:'s',adaptation:{controlledText:true}},config:{type:'session.update'},credential:{value:'bai-eph-test',expires_at:9}} as SessionBootstrap)});
+    await h.client.connect();h.socket.open();h.socket.receive({type:'session.created'});
+    expect(h.client.sendText('A new answer.')).toBe(true);
+    expect(h.socket.sent.filter(e=>e.type==='conversation.item.create')).toEqual([expect.objectContaining({item:expect.objectContaining({id:'pwuser_1_1'})})]);
+    expect(h.socket.sent.some(e=>e.type==='response.create')).toBe(false);
+    expect(h.client.sendText('Duplicate.')).toBe(false);await h.client.toggleMic();expect(h.mic.start).not.toHaveBeenCalled();
+    await h.client.disconnect();expect(busy).toHaveBeenLastCalledWith(false);
+  });
   it('defers adaptive updates through generation and playback, and records only matching acknowledgements', async () => {
     const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
     h.socket.receive({ type: 'response.created', response: { id: 'r1' } });

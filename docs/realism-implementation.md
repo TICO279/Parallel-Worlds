@@ -3,6 +3,9 @@
 Implemented on 2026-10-23 from [the tone and realism plan](phase2-realism-plan.md).
 This is a testable baseline, not evidence that emotional realism has been solved.
 
+The next prototype is described in [independent behavior and variation](agency-implementation.md),
+including the [original plan](phase2-agency-and-variation-plan.md), seeded action selection and controlled typed response execution.
+
 ## Behavior and saved context
 
 Alex and Morgan have stable preferences, priorities, sensitivities, competing motives

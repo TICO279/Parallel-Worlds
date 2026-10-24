@@ -10,6 +10,7 @@ import type { AdaptationData, LatencyRecord } from '../shared/characterState';
 import { loadTrees, saveTrees } from './treeStorage';
 import { TreeView } from './TreeView';
 import { pollAdaptation } from './adaptationPolling';
+import type { ResponsePlan } from '../shared/behavior';
 const lineText = (n: TreeNode) => n.text || (n.transcriptionFailed ? '[Transcription unavailable]'
   : n.role === 'user' && n.status !== 'incomplete' ? 'Transcribing…' : n.status === 'incomplete' ? '[Turn unfinished]' : '…');
 export function App() {
@@ -17,7 +18,8 @@ export function App() {
   const [connection, setConnection] = useState<ConnectionState>('idle'); const [activity, setActivity] = useState<Activity>('idle');
   const [mic, setMic] = useState(false); const [level, setLevel] = useState(0); const [micBusy, setMicBusy] = useState(false);
   const [error, setError] = useState<string | null>(null); const [recording, setRecording] = useState<string | null>(null);
-  const [session, setSession] = useState<StoredSession | null>(null); const [confirmRestart, setConfirmRestart] = useState(false);
+  const [session, setSession] = useState<StoredSession | null>(null); const [restartTarget, setRestartTarget] = useState<string | null>(null);
+  const confirmRestart = restartTarget === selected;
   const [trees, setTrees] = useState<Record<string, ConversationTree>>(loadTrees); const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const treesRef = useRef(trees); treesRef.current = trees;
   // The tree node that was HEAD when the current session started; its live turns hang under it.
@@ -26,6 +28,9 @@ export function App() {
   const [configured, setConfigured] = useState<boolean | null>(null); const [exporting, setExporting] = useState(false);
   const [draft, setDraft] = useState('');
   const selectedRef = useRef(selected); selectedRef.current = selected;
+  const [mode, setMode] = useState<'adaptive' | 'directed'>('adaptive'); const modeRef = useRef(mode); modeRef.current = mode;
+  const [variation, setVariation] = useState('configured'); const variationRef = useRef(variation); variationRef.current = variation;
+  const [typedBusy, setTypedBusy] = useState(false);
   const [adaptation, setAdaptation] = useState<AdaptationData | null>(null);
   const [latency, setLatency] = useState<LatencyRecord | null>(null); const [adaptationNotice, setAdaptationNotice] = useState<string | null>(null);
   const [pollError, setPollError] = useState<string | null>(null); const [storageWarning, setStorageWarning] = useState<string | null>(null);
@@ -43,9 +48,20 @@ export function App() {
         const previous = recorder.current;
         if (previous && !previous.synced) { await previous.flush(); if (!previous.synced) throw new Error('The previous conversation is still recording. Wait for it to synchronize, then start the branch again.'); }
         return api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: 'adaptive',
+          controlledText: modeRef.current === 'directed', ...(variationRef.current !== 'configured' && { variation: Number(variationRef.current) }),
           history: branchHistory(pathTo(treesRef.current[selectedRef.current] ?? emptyTree(), live.current?.baseId ?? null)) }) });
       },
       seed: () => seeds.current,
+      prepareTypedResponse: async (turnId, signal) => {
+        const r = recorder.current; if (!r) throw new Error('Recorder unavailable.');
+        r.snapshot(orderedTurns(state.current)); await r.waitForSync(signal);
+        return api<ResponsePlan>(`/api/sessions/${r.id}/response-plans`, { method: 'POST', signal, body: JSON.stringify({ turnId }) });
+      },
+      recordResponsePlan: async (plan, status, responseId) => {
+        await api(`/api/sessions/${plan.sessionId}/response-plans/${encodeURIComponent(plan.id)}/events`,
+          { method: 'POST', body: JSON.stringify({ status, ...(responseId && { responseId }) }) });
+      },
+      onTypedBusy: value => { if (mounted) setTypedBusy(value); },
       onBootstrap: data => {
         state.current = emptyConversation(); setSession(data.session);
         if (live.current) live.current.sessionId = data.session.id;
@@ -59,13 +75,13 @@ export function App() {
         const id = sessionIdRef.current; if (!id) return;
         if (status === 'failed' && mounted) setAdaptationNotice('Guidance update was not acknowledged. State remains recorded; live updates are paused for this session.');
         void api(`/api/sessions/${id}/adaptation/application`, { method: 'POST', body: JSON.stringify({ version, status }) })
-          .catch(() => { if (mounted) setAdaptationNotice('Could not record the guidance acknowledgement.'); });
+          .catch(() => { if (mounted && sessionIdRef.current === id) setAdaptationNotice('Could not record the guidance acknowledgement.'); });
       },
       onLatency: metric => {
         if (mounted) setLatency(metric);
         const id = sessionIdRef.current; if (!id) return;
         void api(`/api/sessions/${id}/latencies`, { method: 'POST', body: JSON.stringify(metric) })
-          .catch(() => { if (mounted) setAdaptationNotice('Could not record a latency measurement.'); });
+          .catch(() => { if (mounted && sessionIdRef.current === id) setAdaptationNotice('Could not record a latency measurement.'); });
       },
       onEvent: (e: ProtocolEvent) => {
         if (isSeedEcho(e)) return;
@@ -133,11 +149,12 @@ export function App() {
     if (session?.scenarioId === selected) { setSession(null); setAdaptation(null); setLatency(null); setAdaptationNotice(null); setPollError(null); } }
   /** Erase this scenario's conversation (tree, transcript, scores) and return to a fresh start. Asks for a second click. */
   async function startOver() {
-    if (!confirmRestart) { setConfirmRestart(true); return; }
-    setConfirmRestart(false);
+    if (!confirmRestart) { setRestartTarget(selected); return; }
+    setRestartTarget(null);
     // End a live conversation first so its last events are recorded before everything is erased.
     if (client.current && ['ready', 'connecting', 'closing'].includes(client.current.connectionState)) await client.current.disconnect();
     state.current = emptyConversation(); live.current = null; seeds.current = [];
+    sessionIdRef.current = null; recorder.current = null; setTypedBusy(false);
     clearTree(); setSession(null); setAdaptation(null); setLatency(null); setAdaptationNotice(null); setPollError(null);
     setDraft(''); setError(null); setRecording(null);
   }
@@ -169,8 +186,10 @@ export function App() {
       <a className="brand" href="/" aria-label="Parallel Worlds home"><span className="brand-symbol">◒</span><span>parallel<br/>worlds<span className="brand-period">.</span></span></a>
       <div className="sidebar-intro"><span className="eyebrow">THE CONVERSATION LAB</span><p>A different connection.<br/>A world of possibility.</p></div>
       <div className="scenario-label"><span className="eyebrow">CHOOSE YOUR SCENARIO</span><span>01 — 02</span></div>
+      <label className="mode-selector">Reply timing<select value={mode} disabled={busy} onChange={e => setMode(e.target.value as typeof mode)}><option value="adaptive">Automatic · voice and text</option><option value="directed">Directed · typed experiment</option></select></label>
+      <label className="mode-selector">Behavior variation<select value={variation} disabled={busy} onChange={e => setVariation(e.target.value)}><option value="configured">Project setting</option><option value="0">Steady · repeatable policy</option><option value="0.35">Subtle variation</option><option value="0.7">More variation</option></select></label>
       <nav aria-label="Scenarios" className="scenario-list">{scenarios.map((s, i) => <button key={s.id} disabled={busy} aria-pressed={selected === s.id}
-        className={`scenario-option ${selected === s.id ? 'selected' : ''}`} onClick={() => { setSelected(s.id); setSelectedLine(null); }}>
+        className={`scenario-option ${selected === s.id ? 'selected' : ''}`} onClick={() => { setRestartTarget(null); setSelected(s.id); setSelectedLine(null); }}>
         <span className="scenario-number">0{i + 1}</span><span><strong>{s.title}</strong><small>{i === 0 ? 'Connection & curiosity' : 'Clarity & confidence'}</small></span><span className="option-arrow">↗</span>
       </button>)}</nav>
       <div className="sidebar-note"><span className="small-orbit">✳</span><p>Every conversation starts<br/>with being present.</p></div>
@@ -192,15 +211,16 @@ export function App() {
               <button className="primary-button" disabled={!scenario || connection === 'closing'} onClick={() => { if (busy) void client.current?.disconnect(); else start(); }}>
                 <span>{busy ? '■' : atFork ? '⑂' : '↗'}</span>{connection === 'closing' ? 'Ending conversation…' : connection === 'connecting' ? 'Cancel connection' : connection === 'ready' ? 'End conversation' : startLabel}
               </button>
-              <div className="mic-row"><button className={`mic-button ${mic ? 'mic-on' : ''}`} disabled={connection !== 'ready' || micBusy} aria-pressed={mic} onClick={async () => { setMicBusy(true); await client.current?.toggleMic(); setMicBusy(false); }}>{mic ? '● Microphone on' : '○ Enable microphone'}</button><meter aria-label="Microphone level" min={0} max={1} value={Math.min(1, level * 4)}/></div>
-              <p className="control-note">{connection === 'ready' ? mic ? 'Speak naturally. Turn the microphone off to type instead.'
+              <div className="mic-row"><button className={`mic-button ${mic ? 'mic-on' : ''}`} disabled={connection !== 'ready' || micBusy || Boolean(session?.adaptation?.controlledText)} aria-pressed={mic} onClick={async () => { setMicBusy(true); await client.current?.toggleMic(); setMicBusy(false); }}>{mic ? '● Microphone on' : '○ Enable microphone'}</button><meter aria-label="Microphone level" min={0} max={1} value={Math.min(1, level * 4)}/></div>
+              {(mode === 'directed' || session?.adaptation?.controlledText) && <p className="control-note">Typed experiment: appraisal and a saved acting plan precede each reply. Microphone is unavailable here; use Adaptive for voice. Replies may take several seconds.</p>}
+              <p className="control-note">{connection === 'ready' ? session?.adaptation?.controlledText ? 'Type your next message when ready.' : mic ? 'Speak naturally. Turn the microphone off to type instead.'
                 : path.length ? `${name} remembers the conversation so far. Type, or enable your microphone, to carry on.` : 'Type a message, or enable your microphone and say hello.'
                 : atFork ? `The completed dialogue up to this point will be replayed. Say something different this time.`
                 : path.length ? 'Click one of your own lines to revert to that point.' : 'A live voice conversation, at your own pace.'}</p>
               {/* Always visible; disabled until there is something to erase. */}
               <button className={`restart-button ${confirmRestart ? 'confirm' : ''}`}
                 disabled={connection === 'closing' || !(Object.keys(tree.nodes).length > 0 || busy || shownSession)}
-                title="Erase this conversation and start fresh" onClick={() => void startOver()} onBlur={() => setConfirmRestart(false)}>
+                title="Erase this conversation and start fresh" onClick={() => void startOver()} onBlur={() => setRestartTarget(null)}>
                 {confirmRestart ? `Click again to erase this conversation with ${name} and start over` : '↺ Start over'}</button>
             </div>
           </section>
@@ -221,9 +241,9 @@ export function App() {
             {Object.keys(tree.nodes).length > 0 && <TreeView tree={tree} characterName={scenario?.character.name ?? 'Alex'} selectedId={selectedLine} disabled={busy}
               onSelect={setSelectedLine} onRevert={revert} onContinue={id => { setTrees(t => ({ ...t, [selected]: { ...t[selected], headId: id } })); setSelectedLine(null); }} onClear={clearTree}/>}
             <form className="composer" onSubmit={sendDraft}>
-              <input aria-label="Type a message" value={draft} disabled={connection !== 'ready' || mic} onChange={e => setDraft(e.target.value)}
+              <input aria-label="Type a message" value={draft} disabled={connection !== 'ready' || mic || typedBusy} onChange={e => setDraft(e.target.value)}
                 placeholder={connection !== 'ready' ? 'Start the conversation to type a message' : mic ? 'Microphone is on. Turn it off to type.' : `Type a message to ${sessionScenario?.character.name ?? 'Alex'}…`}/>
-              <button type="submit" disabled={connection !== 'ready' || mic || !draft.trim()}>Send ↗</button>
+              <button type="submit" disabled={connection !== 'ready' || mic || typedBusy || !draft.trim()}>{typedBusy ? 'Preparing reply…' : 'Send ↗'}</button>
             </form>
             <div className="transcript-footer"><span>{recording ?? (session ? 'Recorded in local server memory' : 'Transcripts appear here as you talk')}</span><span>◌</span></div>
           </section>

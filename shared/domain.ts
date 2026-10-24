@@ -4,6 +4,8 @@ export interface Character {
   id: string; name: string; description: string; traits: string[];
   values: string[]; motivation: string; goals: string[]; boundaries: string[]; speakingStyle: string; voice: string;
   realism?: { version: string; preferences: string[]; priorities: string[]; sensitivities: string[]; conflictingMotives: string[]; disagreementStyle: string };
+  behavior?: { version: string; directness: number; initiative: number; positiveExpressiveness: number; investment: number;
+    standingRules: string[]; examples: { situation: string; response: string }[] };
 }
 export interface Scenario { id: string; title: string; setting: string; character: Character; }
 export interface SessionSpec { instructions: string; voice: string; language: string; }

@@ -14,7 +14,7 @@ async function main() {
     try {
       const raw = await provider.appraise({ character: scenarios[0].character,
         previous: initialState(scenarios[0].character, 'diagnostic', Date.now()),
-        turnId: 'diagnostic/turn1', utterance: 'I enjoy pottery and quiet coffee shops.', context: [] }, AbortSignal.timeout(timeoutMs));
+        turnId: 'diagnostic/turn1', outputSchema: 'evidence-v1', utterance: 'I enjoy pottery and quiet coffee shops.', context: [] }, AbortSignal.timeout(timeoutMs));
       const result = unpackAppraisalResult(raw);
       console.log(JSON.stringify({ provider: provider.name, model: config.model, timeoutMs,
         latencyMs: Math.round(performance.now() - started), status: 'validated', usage: result.telemetry.usage, deltas: result.appraisal.deltas }));

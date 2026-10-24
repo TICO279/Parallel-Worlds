@@ -41,11 +41,17 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     // The app always uses adaptive; static stays available to scripts and tests.
     const mode = req.body?.mode ?? 'adaptive';
     if (mode !== 'static' && mode !== 'adaptive') throw new ApiError(400, 'Choose static or adaptive mode.');
+    if (req.body?.controlledText !== undefined && typeof req.body.controlledText !== 'boolean' ||
+      req.body?.variation !== undefined && (typeof req.body.variation !== 'number' || !Number.isFinite(req.body.variation) || req.body.variation < 0 || req.body.variation > 1))
+      throw new ApiError(400, 'Invalid typed control or variation setting.');
+    if (req.body?.controlledText && mode !== 'adaptive') throw new ApiError(400, 'Directed typed control requires adaptive mode.');
+    if (req.body?.behaviorSeed !== undefined && (typeof req.body.behaviorSeed !== 'string' || !req.body.behaviorSeed.trim() || req.body.behaviorSeed.length > 128))
+      throw new ApiError(400, 'Invalid behavior experiment seed.');
     const resumed = prepareBranch(req.body?.history, scenario, store, mode === 'adaptive');
     const credential = await mintCredential(options.apiKey, options.fetcher);
     const created = store.create(scenario);
     if (resumed.branch) store.setBranch(created.id, resumed.branch);
-    coordinator.initialize(created.id, mode, resumed.restored);
+    coordinator.initialize(created.id, mode, resumed.restored, req.body?.variation, req.body?.controlledText ?? false, req.body?.behaviorSeed);
     const prepared = coordinator.instructions(created.id); const session = store.get(created.id);
     const config = { ...buildContext(scenario), instructions: prepared.instructions };
     res.status(201).json({ session, config: buildHiggsConfig(config), credential });
@@ -66,6 +72,15 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     if (!turn) throw new ApiError(409, 'Record the finalized user turn before requesting appraisal.');
     await coordinator.enqueue(session.id);
     res.json(coordinator.get(session.id));
+  });
+  app.post('/api/sessions/:id/response-plans', async (req, res) => {
+    if (typeof req.body?.turnId !== 'string' || req.body.turnId.length > 200) throw new ApiError(400, 'Invalid response turn.');
+    res.json(await coordinator.prepareResponse(req.params.id, req.body.turnId));
+  });
+  app.post('/api/sessions/:id/response-plans/:planId/events', (req, res) => {
+    const parsed = z.strictObject({ status: z.enum(['dispatched', 'created', 'completed', 'cancelled', 'failed', 'uncertain']), responseId: z.string().max(200).optional() }).safeParse(req.body);
+    if (!parsed.success) throw new ApiError(400, 'Invalid response event.');
+    res.json(coordinator.recordResponse(req.params.id, req.params.planId, parsed.data.status, parsed.data.responseId));
   });
   app.post('/api/sessions/:id/adaptation/application', (req, res) => {
     const data = coordinator.get(req.params.id);

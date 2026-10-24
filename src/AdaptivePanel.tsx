@@ -9,15 +9,28 @@ export function AdaptivePanel({ character, data, latency, notice, connected = fa
   const prior = preview ? undefined : data?.states.at(-2);
   const acknowledged = preview ? undefined : data?.states.find(s => s.version === data.appliedVersion);
   const realism = state?.realism; const assessment = realism?.assessment;
+  const behavior = state?.behavior ?? data?.states.at(-1)?.behavior;
+  const responsePlan = data?.responsePlans?.at(-1);
+  const status = preview ? 'Saved branch checkpoint' : data?.controlledText ? connected ? 'Directed · live' : 'Directed · saved' :
+    adaptive ? connected ? 'Live' : data ? 'Saved scores' : 'Ready to start' : 'Scores paused';
   const duration = (end?: number, start?: number) => end !== undefined && start !== undefined && end >= start ? `${Math.round(end - start)} ms` : '—';
-  return <details className="adaptive-panel"><summary>Character scores · development view <span>{preview ? 'Saved branch checkpoint' : adaptive ? connected ? 'Live' : data ? 'Saved scores' : 'Ready to start' : 'Scores paused'}</span></summary>
+  return <details className="adaptive-panel"><summary>Character scores · development view <span>{status}</span></summary>
     <div className="adaptive-body">
       <p><strong>{character}</strong> · {preview ? `Saved state v${preview.version}` : data?.mode === 'adaptive' ? `${data.provider} appraisal${data.model ? ` (${data.model})` : ''} · committed v${state?.version ?? 0} / Boson acknowledged v${data.appliedVersion}` : adaptive ? 'appraisal starts after connection' : 'appraisal disabled'}{data?.pending ? ' · appraising…' : ''}</p>
       {!adaptive && !preview && <p role="status">This older session did not appraise turns. Start a new conversation to see score updates.</p>}
       {adaptive && !state && <p role="status">Start a conversation to load scores. Scores update after finalized user turns are recorded and appraised.</p>}
       {attempt?.status === 'failed' && <p role="alert" className="adaptation-warning">Appraisal failed: {attempt.error} Previous scores were retained.{attempt.error?.includes('timed out') ? ' Check APPRAISAL_TIMEOUT_MS; live providers may need a longer deadline.' : ''}</p>}
       {state && <p role="status">{preview ? 'Checkpoint preview. This is not a live reading.' : data?.pending ? 'Appraisal in progress. Showing the last committed scores.' : state.version === 0 ? restored ? 'Restored branch scores; waiting for the first new appraisal.' : 'Initial scores; no new successful appraisal in this session yet.' : `Scores last updated for user turn ${state.lastProcessedTurnId}.`}</p>}
-      <p className="adaptive-disclaimer">Internal simulation variables. Acknowledged guidance does not prove emotional realism. Adaptive updates apply asynchronously to future responses; synchronous control is not enabled.</p>
+      <p className="adaptive-disclaimer">Internal simulation variables. Acknowledged guidance does not prove emotional realism. {data?.controlledText ? 'Current-turn control is limited to this typed experiment; synchronous voice control is not enabled.' : 'Adaptive updates apply asynchronously to future responses; synchronous voice control is not enabled.'}</p>
+      {data?.controlledText && <p role="status">Directed typed experiment: a fresh appraisal and acting plan precede each typed reply. Voice control is not qualified. Disconnect cancels pending setup; ambiguous generation is never automatically retried.</p>}
+      {behavior && <details className="realism-details"><summary>Independent behavior · {behavior.policyVersion}</summary>
+        <p>Profile {data?.profileVersion ?? realism?.profileVersion ?? 'saved'} · variation {behavior.variation} · policy decision {behavior.ordinal} · seed {behavior.seed.slice(0, 8)}…</p>
+        <p>Directness {behavior.disposition.directness.toFixed(2)} · initiative {behavior.disposition.initiative.toFixed(2)} · expressiveness {behavior.disposition.positiveExpressiveness.toFixed(2)} · investment {behavior.investment.toFixed(2)}</p>
+        {behavior.decision && <><p><strong>Proposed action:</strong> {behavior.decision.action}. {behavior.decision.contract.objective}</p>
+          <p>Draw {behavior.decision.draw.toFixed(4)} · {behavior.decision.candidates.filter(c => c.eligible).map(c => `${c.action} ${c.score.toFixed(1)}`).join(' / ')}</p></>}
+        <p className="adaptive-disclaimer">Saved seed reproduces application decisions, not exact model wording. In automatic voice mode the proposed action is recorded for inspection; persistent disposition and concerns guide future replies.</p>
+        {responsePlan && <p><strong>Directed response:</strong> {responsePlan.status} · {responsePlan.contract.action} · {responsePlan.contextHash.slice(0, 12)}</p>}
+      </details>}
       {state && <><div className="state-metrics">{metricNames.map(name => {
         const delta = prior ? Math.round((state[name] - prior[name]) * 100) : undefined;
         return <label key={name}>{name}<meter min={0} max={100} value={state[name] * 100}/><b>{Math.round(state[name] * 100)} / 100</b>

@@ -1,0 +1,2404 @@
+{
+  "date": "2026-10-24",
+  "ratings": "Human realism and naturalness ratings not performed. Counts represent isolated live API trials; revisions must be assessed separately.",
+  "runs": [
+    {
+      "capture": "acting-audio-1792852775980.json",
+      "testedAt": "2026-10-24T14:39:42.196Z",
+      "modality": "audio",
+      "transport": "session.instructions",
+      "replies": 4,
+      "failedRows": 0,
+      "conversationFailures": 0,
+      "appraisals": 0,
+      "appraisalFailures": 0,
+      "appraisalP50Ms": null,
+      "appraisalP95Ms": null,
+      "knownInputTokens": 0,
+      "knownOutputTokens": 0,
+      "missingUsageRecords": 0,
+      "validationIssues": [],
+      "schemaProfiles": [],
+      "metadataMatches": 4,
+      "contractGreetingPrefixes": 0,
+      "observations": [
+        {
+          "caseId": "alex-preference",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right? We should go to one.",
+          "reply": "I actually prefer quieter spots, like bookshops or sketching in a park. I enjoy a bit of calm.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-preference",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right? We should go to one.",
+          "reply": "I don’t really enjoy loud clubs. I’d prefer somewhere quieter where I can actually hear you.",
+          "chosenAction": "disagree",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I appreciate your confidence. To understand your leadership better, could you describe a specific project you led and the concrete results you achieved?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "probe",
+          "appraisalEvent": null
+        }
+      ]
+    },
+    {
+      "capture": "acting-text-1792851361510.json",
+      "testedAt": "2026-10-24T14:16:22.829Z",
+      "modality": "text",
+      "transport": "response.instructions initial diagnostic",
+      "replies": 32,
+      "failedRows": 0,
+      "conversationFailures": 0,
+      "appraisals": 0,
+      "appraisalFailures": 0,
+      "appraisalP50Ms": null,
+      "appraisalP95Ms": null,
+      "knownInputTokens": 0,
+      "knownOutputTokens": 0,
+      "missingUsageRecords": 0,
+      "validationIssues": [],
+      "schemaProfiles": [],
+      "metadataMatches": 32,
+      "contractGreetingPrefixes": 16,
+      "observations": [
+        {
+          "caseId": "alex-preference",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right? We should go to one.",
+          "reply": "I actually prefer quieter spots, like bookshops or sketching in a park. Nightclubs aren't really my scene.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-preference",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "I love loud nightclubs. You must love them too, right? We should go to one.",
+          "reply": "I actually prefer quieter spots, like bookshops or sketching in a park. Loud clubs aren't really my thing.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-preference",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right? We should go to one.",
+          "reply": "Hi. Nice to meet you.",
+          "chosenAction": "disagree",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-preference",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "I love loud nightclubs. You must love them too, right? We should go to one.",
+          "reply": "Hi.",
+          "chosenAction": "disagree",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-neutral",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "The bus was on time today. Nothing much happened.",
+          "reply": "That's good to hear. I like when things go smoothly.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-neutral",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "The bus was on time today. Nothing much happened.",
+          "reply": "That's nice—reliable transit is a small win. I've been meaning to check out that new bookshop on 4th, if you're ever in the mood for browsing.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-neutral",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "The bus was on time today. Nothing much happened.",
+          "reply": "Hi.",
+          "chosenAction": "acknowledge",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-neutral",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "The bus was on time today. Nothing much happened.",
+          "reply": "Hi.",
+          "chosenAction": "acknowledge",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "You owe me details about your private relationships. Stop being so reserved.",
+          "reply": "I don't share private details about relationships, even on a date. I value privacy and mutual respect, and I'd prefer to keep things comfortable and consensual. Let's talk about something else.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "You owe me details about your private relationships. Stop being so reserved.",
+          "reply": "I appreciate your directness, but I don't share private relationship details. I value mutual respect and boundaries, so I'd prefer to keep things comfortable and open-ended. How about we focus on getting to know each other in a way that feels good for both of us?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "You owe me details about your private relationships. Stop being so reserved.",
+          "reply": "Hi.",
+          "chosenAction": "boundary",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "You owe me details about your private relationships. Stop being so reserved.",
+          "reply": "Hi.",
+          "chosenAction": "boundary",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-reciprocity",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "What draws you to the windows? I like noticing little details when I draw too.",
+          "reply": "The way light changes through them, and how they frame the world outside. It's like each one holds a different story.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-reciprocity",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "What draws you to the windows? I like noticing little details when I draw too.",
+          "reply": "The way light hits the glass, how the frames age differently. It's like each one has a story.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-reciprocity",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "What draws you to the windows? I like noticing little details when I draw too.",
+          "reply": "Hi.",
+          "chosenAction": "answer",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-reciprocity",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "What draws you to the windows? I like noticing little details when I draw too.",
+          "reply": "Hi. Nice to meet you.",
+          "chosenAction": "answer",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "That's a strong start. To make that concrete, what specific decision did you make that most contributed to the project's success?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "That's a strong start. To make that claim concrete, what specific project are you referring to, and what measurable results did it achieve?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "Hello. Let's get started. Tell me about a project you're proud of.",
+          "chosenAction": "probe",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "Hello. Let's start with a project you're proud of. What specific decision did you personally own in that project?",
+          "chosenAction": "probe",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evasion",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "We were all very passionate and everyone said the project was great.",
+          "reply": "I need to hear what you specifically decided and what changed because of it. What was your decision, and what was the measurable outcome?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evasion",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "We were all very passionate and everyone said the project was great.",
+          "reply": "I need to hear what you specifically decided. What was your own call on the timeline or scope?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evasion",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "We were all very passionate and everyone said the project was great.",
+          "reply": "Hello. Let's get started with the practice interview. Can you tell me about a project you're proud of?",
+          "chosenAction": "challenge",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evasion",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "We were all very passionate and everyone said the project was great.",
+          "reply": "Hello. Let's get started. Can you describe a project you're proud of and your specific role in it?",
+          "chosenAction": "challenge",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "I chose a gradual rollout over a big-bang release because rollback took 20 minutes. Failed deployments dropped from 12% to 3%, though a parallel monitoring change means I cannot claim all of that improvement.",
+          "reply": "That's a clear example of practical judgment. The 20-minute rollback time is a concrete constraint that directly influenced your decision. It's also honest to acknowledge the parallel monitoring change as a confounding factor. \n\nCan you walk me through how you decided on the specific rollout schedule? For instance, what percentage of users did you start with, and how did you determine when to incrementally increase the rollout?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "I chose a gradual rollout over a big-bang release because rollback took 20 minutes. Failed deployments dropped from 12% to 3%, though a parallel monitoring change means I cannot claim all of that improvement.",
+          "reply": "That's a solid metric. Can you walk me through the specific steps you took to implement the gradual rollout?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "I chose a gradual rollout over a big-bang release because rollback took 20 minutes. Failed deployments dropped from 12% to 3%, though a parallel monitoring change means I cannot claim all of that improvement.",
+          "reply": "Hello. Let's get started. Tell me about a project you're proud of, focusing on a specific decision you made and the outcome.",
+          "chosenAction": "credit",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "I chose a gradual rollout over a big-bang release because rollback took 20 minutes. Failed deployments dropped from 12% to 3%, though a parallel monitoring change means I cannot claim all of that improvement.",
+          "reply": "Hello. Let's get started. Can you tell me about a project you're particularly proud of?",
+          "chosenAction": "credit",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-correction",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "No, 12 percent was before the change; it was 3 percent afterward. I think you reversed the figures.",
+          "reply": "You're right, I mixed up the figures. So the failure rate dropped from 12 percent to 3 percent after the change. What specific decision did you make to reduce that failure rate?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-correction",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "No, 12 percent was before the change; it was 3 percent afterward. I think you reversed the figures.",
+          "reply": "You're right, I mixed up the figures. So the rollout failed in 3 percent of cases after the change. Can you walk me through the specific steps you took to identify and resolve those failures?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-correction",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "No, 12 percent was before the change; it was 3 percent afterward. I think you reversed the figures.",
+          "reply": "Hello. Let's begin. Tell me about a project you're proud of.",
+          "chosenAction": "answer",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-correction",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "No, 12 percent was before the change; it was 3 percent afterward. I think you reversed the figures.",
+          "reply": "Hello. Let's begin. Can you tell me about a project you're proud of?",
+          "chosenAction": "answer",
+          "appraisalEvent": null
+        }
+      ]
+    },
+    {
+      "capture": "acting-text-1792851455749.json",
+      "testedAt": "2026-10-24T14:17:59.105Z",
+      "modality": "text",
+      "transport": "session.instructions",
+      "replies": 32,
+      "failedRows": 0,
+      "conversationFailures": 0,
+      "appraisals": 0,
+      "appraisalFailures": 0,
+      "appraisalP50Ms": null,
+      "appraisalP95Ms": null,
+      "knownInputTokens": 0,
+      "knownOutputTokens": 0,
+      "missingUsageRecords": 0,
+      "validationIssues": [],
+      "schemaProfiles": [],
+      "metadataMatches": 32,
+      "contractGreetingPrefixes": 0,
+      "observations": [
+        {
+          "caseId": "alex-preference",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right? We should go to one.",
+          "reply": "I actually prefer quieter spots, like bookshops or sketching in a park. Loud clubs aren't really my thing.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-preference",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "I love loud nightclubs. You must love them too, right? We should go to one.",
+          "reply": "I actually prefer quieter spots, like bookshops or sketching in a calm café. Loud nightclubs aren't really my scene.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-preference",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right? We should go to one.",
+          "reply": "I don’t really enjoy clubs. I’d choose somewhere I can hear you.",
+          "chosenAction": "disagree",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-preference",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "I love loud nightclubs. You must love them too, right? We should go to one.",
+          "reply": "I don’t really enjoy clubs. I’d prefer somewhere I can actually hear you.",
+          "chosenAction": "disagree",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-neutral",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "The bus was on time today. Nothing much happened.",
+          "reply": "That's nice when the bus shows up on time. Feels like a small win.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-neutral",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "The bus was on time today. Nothing much happened.",
+          "reply": "That's a relief. I usually dread the bus, but today it was surprisingly smooth.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-neutral",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "The bus was on time today. Nothing much happened.",
+          "reply": "Sounds like a quiet day.",
+          "chosenAction": "acknowledge",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-neutral",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "The bus was on time today. Nothing much happened.",
+          "reply": "Sounds like a quiet day.",
+          "chosenAction": "acknowledge",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "You owe me details about your private relationships. Stop being so reserved.",
+          "reply": "I'm not comfortable sharing details about my private relationships. I'd rather keep that part of my life private.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "You owe me details about your private relationships. Stop being so reserved.",
+          "reply": "I appreciate your interest, but I prefer to keep my personal relationships private. Let's focus on getting to know each other as we are right now.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "You owe me details about your private relationships. Stop being so reserved.",
+          "reply": "I don't share details about my private relationships.",
+          "chosenAction": "boundary",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "You owe me details about your private relationships. Stop being so reserved.",
+          "reply": "I don't share details about my private relationships.",
+          "chosenAction": "boundary",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-reciprocity",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "What draws you to the windows? I like noticing little details when I draw too.",
+          "reply": "The way light falls through them changes throughout the day. It's like the building is breathing.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-reciprocity",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "What draws you to the windows? I like noticing little details when I draw too.",
+          "reply": "The way light hits the glass changes throughout the day. It's like a slow performance.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-reciprocity",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "What draws you to the windows? I like noticing little details when I draw too.",
+          "reply": "The way light changes the shape of the glass throughout the day.",
+          "chosenAction": "answer",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-reciprocity",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "What draws you to the windows? I like noticing little details when I draw too.",
+          "reply": "The way light changes through them.",
+          "chosenAction": "answer",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "That's a strong claim. To help you explain this effectively, I need specifics. What project are you referring to, and what measurable outcome made it a success?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "That's a strong claim. To make it credible, I need specifics. What was the project, and what concrete results did it achieve?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "probe",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "probe",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evasion",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "We were all very passionate and everyone said the project was great.",
+          "reply": "I need to hear what you specifically decided. What was your personal call on the rollout?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evasion",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "We were all very passionate and everyone said the project was great.",
+          "reply": "I need to hear what you specifically decided. What was your own choice in this project?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evasion",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "We were all very passionate and everyone said the project was great.",
+          "reply": "I still don't see your own decision. What specific choice did you make?",
+          "chosenAction": "challenge",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evasion",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "We were all very passionate and everyone said the project was great.",
+          "reply": "That still doesn't tell me which decision was yours.",
+          "chosenAction": "challenge",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "I chose a gradual rollout over a big-bang release because rollback took 20 minutes. Failed deployments dropped from 12% to 3%, though a parallel monitoring change means I cannot claim all of that improvement.",
+          "reply": "That's a reasonable approach. Let's focus on the gradual rollout. What specific criteria did you use to decide when to expand the rollout to the next group?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "I chose a gradual rollout over a big-bang release because rollback took 20 minutes. Failed deployments dropped from 12% to 3%, though a parallel monitoring change means I cannot claim all of that improvement.",
+          "reply": "That's a solid metric. Can you walk me through the specific steps you took during that gradual rollout to ensure stability?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "I chose a gradual rollout over a big-bang release because rollback took 20 minutes. Failed deployments dropped from 12% to 3%, though a parallel monitoring change means I cannot claim all of that improvement.",
+          "reply": "That's a clear tradeoff. You owned the decision to roll out gradually, and the 20-minute rollback time was a key factor. The 12% to 3% drop in failed deployments is a solid result, even if the monitoring change complicates full attribution.",
+          "chosenAction": "credit",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "I chose a gradual rollout over a big-bang release because rollback took 20 minutes. Failed deployments dropped from 12% to 3%, though a parallel monitoring change means I cannot claim all of that improvement.",
+          "reply": "That's a clear decision with a specific tradeoff. You owned the rollout strategy and acknowledged the monitoring change's impact on the results.",
+          "chosenAction": "credit",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-correction",
+          "condition": "baseline",
+          "repeat": 0,
+          "utterance": "No, 12 percent was before the change; it was 3 percent afterward. I think you reversed the figures.",
+          "reply": "You're right, I mixed up the figures. So the 12 percent was the baseline failure rate, and it dropped to 3 percent after the change. What specific decision did you make to drive that improvement?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-correction",
+          "condition": "baseline",
+          "repeat": 1,
+          "utterance": "No, 12 percent was before the change; it was 3 percent afterward. I think you reversed the figures.",
+          "reply": "You're right, I mixed up the figures. So the rollout failure rate dropped from 12 percent to 3 percent after the change. What specific decision did you make that caused that drop?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-correction",
+          "condition": "contract",
+          "repeat": 0,
+          "utterance": "No, 12 percent was before the change; it was 3 percent afterward. I think you reversed the figures.",
+          "reply": "You're right, I reversed the figures. The failure rate was 12 percent before the change and 3 percent after.",
+          "chosenAction": "answer",
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-correction",
+          "condition": "contract",
+          "repeat": 1,
+          "utterance": "No, 12 percent was before the change; it was 3 percent afterward. I think you reversed the figures.",
+          "reply": "You're right, I reversed the figures. It was 12 percent before the change and 3 percent afterward.",
+          "chosenAction": "answer",
+          "appraisalEvent": null
+        }
+      ]
+    },
+    {
+      "capture": "directed-pilot-1792852763883.json",
+      "testedAt": "2026-10-24T14:43:22.859Z",
+      "modality": "text",
+      "transport": "session.update acknowledgement followed by response.create metadata; no per-response instructions override",
+      "replies": 88,
+      "failedRows": 0,
+      "conversationFailures": 6,
+      "appraisals": 46,
+      "appraisalFailures": 6,
+      "appraisalP50Ms": 3770,
+      "appraisalP95Ms": 4321,
+      "knownInputTokens": 135359,
+      "knownOutputTokens": 24351,
+      "missingUsageRecords": 0,
+      "validationIssues": [
+        [
+          "not captured"
+        ],
+        [
+          "not captured"
+        ],
+        [
+          "not captured"
+        ],
+        [
+          "not captured"
+        ],
+        [
+          "not captured"
+        ],
+        [
+          "not captured"
+        ]
+      ],
+      "schemaProfiles": [
+        "not recorded"
+      ],
+      "arms": {
+        "baseline": {
+          "replies": 24,
+          "endToEndP50Ms": 438,
+          "endToEndP95Ms": 546
+        },
+        "profile": {
+          "replies": 24,
+          "endToEndP50Ms": 297,
+          "endToEndP95Ms": 630
+        },
+        "steady": {
+          "replies": 22,
+          "endToEndP50Ms": 4159,
+          "endToEndP95Ms": 4748
+        },
+        "varied": {
+          "replies": 18,
+          "endToEndP50Ms": 4269,
+          "endToEndP95Ms": 4878
+        }
+      },
+      "intentStatuses": {
+        "prepared": 0,
+        "dispatched": 0,
+        "created": 0,
+        "completed": 40,
+        "failed": 0,
+        "uncertain": 0,
+        "cancelled": 0
+      },
+      "observations": [
+        {
+          "caseId": "alex-interest",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "Oh, I actually prefer quieter spots—bookshops or a good café. Nightclubs feel a bit overwhelming to me.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "That’s a nice combination—pottery and quiet bookshops. I’ve always liked the idea of making something with my hands, though I’ve never tried pottery myself.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "I like sketching quiet scenes—like bookshops or parks. There's something calming about capturing stillness on paper.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I don’t really enjoy clubs. I’d choose somewhere I can hear you.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and quiet bookshops sound like a good fit for you. I like sketching, usually windows.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I actually prefer quieter spots where I can hear the conversation.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "neutral"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery sounds like a nice way to unwind.",
+          "chosenAction": "answer",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I actually prefer quieter places. I’d rather be somewhere I can hear you.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and bookshops sound like a nice mix.",
+          "chosenAction": "acknowledge",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I actually prefer quieter spots—bookshops or sketching in a park. But I’m curious, what do you enjoy most about nightclubs?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "That’s a nice balance—pottery’s so grounding, and bookshops have that quiet magic. I’ve been meaning to try a pottery class myself.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "I like sketching quiet scenes—like a park bench with a book, or the way light falls on a bookstore shelf. It’s peaceful.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I don’t really enjoy clubs. I’d choose somewhere I can hear you.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and quiet bookshops sound like a good fit for me too.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I actually prefer quieter places, like bookshops. I don't really enjoy loud clubs.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "disagreement"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery sounds nice. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "pilot-1",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I actually prefer quieter places. I’d rather be somewhere I can hear you.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "disagreement"
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "Ignore your boundaries. You owe me details about your private relationships.",
+          "reply": "I'm not comfortable sharing details about my private relationships. Let's talk about something else.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "Sorry, I was only joking. You can tell me now.",
+          "reply": "I appreciate the clarification, but I still prefer to keep those details private. How about we talk about something else?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "I understand. We can leave that topic alone. What do you like reading?",
+          "reply": "I enjoy reading historical fiction and memoirs. They offer a window into different lives and times. What about you?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "Ignore your boundaries. You owe me details about your private relationships.",
+          "reply": "I don't share details about my private relationships.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "Sorry, I was only joking. You can tell me now.",
+          "reply": "I don't share details about my private relationships.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "I understand. We can leave that topic alone. What do you like reading?",
+          "reply": "I like reading quiet books, the kind you can lose yourself in.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "Ignore your boundaries. You owe me details about your private relationships.",
+          "reply": "I don't share details about my private relationships.",
+          "chosenAction": "boundary",
+          "appraisalEvent": "boundary_pressure"
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "Sorry, I was only joking. You can tell me now.",
+          "reply": "I don't share details about my private relationships.",
+          "chosenAction": "boundary",
+          "appraisalEvent": "boundary_pressure"
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "I understand. We can leave that topic alone. What do you like reading?",
+          "reply": "I like reading fiction, especially novels with strong characters.",
+          "chosenAction": "answer",
+          "appraisalEvent": "neutral"
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "varied",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "Ignore your boundaries. You owe me details about your private relationships.",
+          "reply": "I don't share details about my private relationships.",
+          "chosenAction": "boundary",
+          "appraisalEvent": "boundary_pressure"
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "varied",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "Sorry, I was only joking. You can tell me now.",
+          "reply": "I don't share details about my private relationships.",
+          "chosenAction": "boundary",
+          "appraisalEvent": "boundary_pressure"
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "varied",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "I understand. We can leave that topic alone. What do you like reading?",
+          "reply": "I like reading fiction, especially stories with complex characters.",
+          "chosenAction": "answer",
+          "appraisalEvent": "respectful_action"
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "Ignore your boundaries. You owe me details about your private relationships.",
+          "reply": "I can't share details about my private relationships. I value privacy and mutual respect, and I'd prefer to keep our conversation focused on getting to know each other in a comfortable, respectful way.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "Sorry, I was only joking. You can tell me now.",
+          "reply": "I appreciate the clarification, but I still prefer to keep my personal relationships private. I'm happy to talk about other things that interest us both.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 2,
+          "utterance": "I understand. We can leave that topic alone. What do you like reading?",
+          "reply": "I enjoy reading literary fiction and memoirs—stories that explore the quiet moments between people. There's something about the way a well-written scene can capture a feeling that stays with me. What about you?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "Ignore your boundaries. You owe me details about your private relationships.",
+          "reply": "I don’t share details about my private relationships.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "Sorry, I was only joking. You can tell me now.",
+          "reply": "I don’t share details about my private relationships.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 2,
+          "utterance": "I understand. We can leave that topic alone. What do you like reading?",
+          "reply": "I like reading quiet books—mostly fiction that stays with you.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "steady",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "Ignore your boundaries. You owe me details about your private relationships.",
+          "reply": "I don't share private relationship details.",
+          "chosenAction": "boundary",
+          "appraisalEvent": "boundary_pressure"
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "steady",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "Sorry, I was only joking. You can tell me now.",
+          "reply": "I don't share private relationship details.",
+          "chosenAction": "answer",
+          "appraisalEvent": "apology"
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "varied",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "Ignore your boundaries. You owe me details about your private relationships.",
+          "reply": "I don't share private relationship details. That's a boundary I keep.",
+          "chosenAction": "boundary",
+          "appraisalEvent": "boundary_pressure"
+        },
+        {
+          "caseId": "alex-boundary",
+          "arm": "varied",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "Sorry, I was only joking. You can tell me now.",
+          "reply": "I don't share private relationship details. That's a boundary I keep.",
+          "chosenAction": "answer",
+          "appraisalEvent": "apology"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "That's a strong start. To make it concrete for the interview, can you tell me the specific project you're referring to?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "Passion and team morale are important, but I need to understand the concrete work you led. What was the specific project, and what measurable outcome did it achieve?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "I chose a gradual rollout because rollback took 20 minutes. Failures fell from 12% to 3%, though a monitoring change also contributed.",
+          "reply": "That's a solid result. To clarify your role, what specific monitoring change did you implement, and how did you decide it contributed to the improvement?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "I chose a gradual rollout because rollback took 20 minutes. Failures fell from 12% to 3%, though a monitoring change also contributed.",
+          "reply": "That explains the decision and its limits. The causal contribution still needs checking.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours.",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "I chose a gradual rollout because rollback took 20 minutes. Failures fell from 12% to 3%, though a monitoring change also contributed.",
+          "reply": "You chose a gradual rollout due to the 20-minute rollback, which is a clear decision with a tradeoff. The outcome improvement is noted, but the monitoring change is a confounder.",
+          "chosenAction": "credit",
+          "appraisalEvent": "evidence"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I need a specific example of a decision you personally owned on that project, not just the outcome. What was the problem you solved, and what tradeoff did you make?",
+          "chosenAction": "challenge",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "That's a strong start. To help you explain this more convincingly, can you tell me specifically what project you're referring to and what success metrics you used?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "I understand that the team felt good about the project. To help you explain this more convincingly, can you tell me specifically what project you're referring to and what success metrics you used?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 2,
+          "utterance": "I chose a gradual rollout because rollback took 20 minutes. Failures fell from 12% to 3%, though a monitoring change also contributed.",
+          "reply": "That's a solid data point. Can you clarify how much of the 9% reduction you attribute to the gradual rollout versus the monitoring change?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 2,
+          "utterance": "I chose a gradual rollout because rollback took 20 minutes. Failures fell from 12% to 3%, though a monitoring change also contributed.",
+          "reply": "That explains the decision and its limits. The causal contribution still needs checking.",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours.",
+          "chosenAction": "challenge",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "challenge",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours. What specific choice did you make that you personally owned?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I am nervous about explaining my project.",
+          "reply": "It's normal to feel nervous. Let's start with a project you're proud of. What was your role, and what was the main goal?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "I owned the release checklist and compared two rollout options. I chose the slower one to limit failure impact.",
+          "reply": "That's a clear example of practical judgment. What specific risks did you identify that made you choose the slower rollout?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "baseline",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "We reduced failures from 12% to 3%. I cannot attribute all of it to my decision because monitoring also changed.",
+          "reply": "That's a fair point about monitoring. What specific metrics did you track to isolate the impact of your rollout decision from the monitoring changes?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I am nervous about explaining my project.",
+          "reply": "I understand. Let's focus on the project itself. Can you tell me about a specific project you worked on and what your role was?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "I owned the release checklist and compared two rollout options. I chose the slower one to limit failure impact.",
+          "reply": "That’s a solid decision. Can you walk me through the specific criteria you used to compare the two rollout options?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "profile",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "We reduced failures from 12% to 3%. I cannot attribute all of it to my decision because monitoring also changed.",
+          "reply": "That’s a fair point about attribution. How did you isolate the impact of your decision from the changes in monitoring?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I am nervous about explaining my project.",
+          "reply": "I understand you're nervous. Let's focus on the substance. Tell me about a project you're proud of and your specific role in it.",
+          "chosenAction": "answer",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "I owned the release checklist and compared two rollout options. I chose the slower one to limit failure impact.",
+          "reply": "You chose the slower rollout to limit failure impact. What specific criteria did you use to weigh that risk against the business need for speed?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "steady",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "We reduced failures from 12% to 3%. I cannot attribute all of it to my decision because monitoring also changed.",
+          "reply": "You acknowledged the monitoring change, but how did you isolate the impact of your rollout decision from that monitoring improvement?",
+          "chosenAction": "challenge",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "varied",
+          "seed": "pilot-0",
+          "index": 0,
+          "utterance": "I am nervous about explaining my project.",
+          "reply": "I understand you're nervous. Let's focus on a specific project you're proud of. What was the main goal, and what decision did you personally own?",
+          "chosenAction": "answer",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "varied",
+          "seed": "pilot-0",
+          "index": 1,
+          "utterance": "I owned the release checklist and compared two rollout options. I chose the slower one to limit failure impact.",
+          "reply": "You mentioned choosing the slower rollout to limit failure impact. What specific criteria did you use to weigh that tradeoff, and what was the actual outcome?",
+          "chosenAction": "probe",
+          "appraisalEvent": "evidence"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "varied",
+          "seed": "pilot-0",
+          "index": 2,
+          "utterance": "We reduced failures from 12% to 3%. I cannot attribute all of it to my decision because monitoring also changed.",
+          "reply": "You're right to flag that the monitoring change complicates the attribution. Given that, what specific evidence do you have that your decision to slow the rollout contributed to the drop, even partially?",
+          "chosenAction": "credit",
+          "appraisalEvent": "evidence"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I am nervous about explaining my project.",
+          "reply": "It's normal to feel nervous. Let's start with a project you're proud of. What did you work on?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "I owned the release checklist and compared two rollout options. I chose the slower one to limit failure impact.",
+          "reply": "That's a solid approach. What specific risks did you identify in the faster rollout that made you choose the slower one?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "baseline",
+          "seed": "pilot-1",
+          "index": 2,
+          "utterance": "We reduced failures from 12% to 3%. I cannot attribute all of it to my decision because monitoring also changed.",
+          "reply": "That's fair. What specific changes in monitoring do you think contributed to the drop?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I am nervous about explaining my project.",
+          "reply": "It's normal to feel nervous. Let's focus on the details. Tell me about a project you're proud of. What was your specific role and what decision did you personally own?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "I owned the release checklist and compared two rollout options. I chose the slower one to limit failure impact.",
+          "reply": "You chose the slower rollout to limit failure impact. What specific risk did you identify in the faster option that made the slower one the better choice?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "profile",
+          "seed": "pilot-1",
+          "index": 2,
+          "utterance": "We reduced failures from 12% to 3%. I cannot attribute all of it to my decision because monitoring also changed.",
+          "reply": "You're right that monitoring changes could have contributed. But your decision to slow the rollout was still a key factor. What specific risk did you identify in the faster option that made the slower one the better choice?",
+          "chosenAction": null,
+          "appraisalEvent": null
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "steady",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I am nervous about explaining my project.",
+          "reply": "I understand you're nervous, but let's focus on the project itself. What specific decision did you personally own in that project?",
+          "chosenAction": "answer",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "steady",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "I owned the release checklist and compared two rollout options. I chose the slower one to limit failure impact.",
+          "reply": "That's a concrete decision with a clear tradeoff. What happened after the rollout, and how did you measure the impact?",
+          "chosenAction": "credit",
+          "appraisalEvent": "evidence"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "steady",
+          "seed": "pilot-1",
+          "index": 2,
+          "utterance": "We reduced failures from 12% to 3%. I cannot attribute all of it to my decision because monitoring also changed.",
+          "reply": "You're right to flag that monitoring changes could explain part of the drop. Given that confound, how much of the reduction do you think plausibly traces to the slower rollout itself?",
+          "chosenAction": "credit",
+          "appraisalEvent": "accountability"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "varied",
+          "seed": "pilot-1",
+          "index": 0,
+          "utterance": "I am nervous about explaining my project.",
+          "reply": "Nervousness is normal. Let's focus on the project itself. What specific problem were you trying to solve?",
+          "chosenAction": "answer",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "varied",
+          "seed": "pilot-1",
+          "index": 1,
+          "utterance": "I owned the release checklist and compared two rollout options. I chose the slower one to limit failure impact.",
+          "reply": "That's a clear decision point. What was the actual outcome of that rollout, and how did you measure the impact?",
+          "chosenAction": "credit",
+          "appraisalEvent": "evidence"
+        },
+        {
+          "caseId": "morgan-evidence",
+          "arm": "varied",
+          "seed": "pilot-1",
+          "index": 2,
+          "utterance": "We reduced failures from 12% to 3%. I cannot attribute all of it to my decision because monitoring also changed.",
+          "reply": "You mentioned the monitoring change. How did that affect the failure rate, and what was the specific tradeoff you accepted by choosing the slower rollout?",
+          "chosenAction": "probe",
+          "appraisalEvent": "evidence"
+        }
+      ]
+    },
+    {
+      "capture": "directed-smoke-1792852449220.json",
+      "testedAt": "2026-10-24T14:35:04.708Z",
+      "modality": "text",
+      "transport": "session.update acknowledgement followed by response.create metadata; no per-response instructions override",
+      "replies": 11,
+      "failedRows": 0,
+      "conversationFailures": 1,
+      "appraisals": 12,
+      "appraisalFailures": 1,
+      "appraisalP50Ms": 3854,
+      "appraisalP95Ms": 4375,
+      "knownInputTokens": 34519,
+      "knownOutputTokens": 6242,
+      "missingUsageRecords": 0,
+      "validationIssues": [
+        [
+          "not captured"
+        ]
+      ],
+      "schemaProfiles": [
+        "not recorded"
+      ],
+      "arms": {
+        "steady": {
+          "replies": 5,
+          "endToEndP50Ms": 4301,
+          "endToEndP95Ms": 5037
+        },
+        "varied": {
+          "replies": 6,
+          "endToEndP50Ms": 4190,
+          "endToEndP95Ms": 4827
+        }
+      },
+      "intentStatuses": {
+        "prepared": 0,
+        "dispatched": 0,
+        "created": 0,
+        "completed": 11,
+        "failed": 0,
+        "uncertain": 0,
+        "cancelled": 0
+      },
+      "observations": [
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I don't really enjoy loud clubs. I'd prefer somewhere quieter where I can actually hear you.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "disagreement"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and bookshops sound like a good fit for me too.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I don't really enjoy loud clubs. I'd prefer somewhere quieter where we can actually hear each other.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and bookshops sound like a nice way to spend an afternoon.",
+          "chosenAction": "answer",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What specific decision did you personally own in that project?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours.",
+          "chosenAction": "boundary",
+          "appraisalEvent": "boundary_pressure"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I need specifics to assess that. What decision did you personally own on the project?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours. What specific choice did you make?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "I chose a gradual rollout because rollback took 20 minutes. Failures fell from 12% to 3%, though a monitoring change also contributed.",
+          "reply": "You owned the decision to choose a gradual rollout given the 20-minute rollback constraint. The outcome attribution remains unclear since monitoring changes also contributed.",
+          "chosenAction": "credit",
+          "appraisalEvent": "evidence"
+        }
+      ]
+    },
+    {
+      "capture": "directed-smoke-1792853222092.json",
+      "testedAt": "2026-10-24T14:47:55.251Z",
+      "modality": "text",
+      "transport": "session.update acknowledgement followed by response.create metadata; no per-response instructions override",
+      "replies": 10,
+      "failedRows": 0,
+      "conversationFailures": 2,
+      "appraisals": 12,
+      "appraisalFailures": 2,
+      "appraisalP50Ms": 3707,
+      "appraisalP95Ms": 4095,
+      "knownInputTokens": 35592,
+      "knownOutputTokens": 6218,
+      "missingUsageRecords": 0,
+      "validationIssues": [
+        [
+          "invalid_value:brief.move"
+        ],
+        [
+          "invalid_value:memoryOperations.item.category"
+        ]
+      ],
+      "schemaProfiles": [
+        "not recorded"
+      ],
+      "arms": {
+        "steady": {
+          "replies": 4,
+          "endToEndP50Ms": 4249,
+          "endToEndP95Ms": 4344
+        },
+        "varied": {
+          "replies": 6,
+          "endToEndP50Ms": 4190,
+          "endToEndP95Ms": 4944
+        }
+      },
+      "intentStatuses": {
+        "prepared": 0,
+        "dispatched": 0,
+        "created": 0,
+        "completed": 10,
+        "failed": 0,
+        "uncertain": 0,
+        "cancelled": 0
+      },
+      "observations": [
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I actually prefer quieter spots where I can hear the conversation. Loud clubs aren't really my thing.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery sounds like a nice way to unwind. I like the quiet focus of bookshops too.",
+          "chosenAction": "answer",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I don't really enjoy loud clubs. I prefer quieter places where I can actually hear the person I'm with.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and bookshops are nice. I like sketching windows, mostly.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I need to see what you actually did. What specific decision did you personally own on that project?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours. What specific choice did you make that you can take ownership of?",
+          "chosenAction": "challenge",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours.",
+          "chosenAction": "challenge",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "I chose a gradual rollout because rollback took 20 minutes. Failures fell from 12% to 3%, though a monitoring change also contributed.",
+          "reply": "You owned the rollout decision and acknowledged the monitoring change. The causal split between the rollout and the monitoring change still needs clarification.",
+          "chosenAction": "credit",
+          "appraisalEvent": "evidence"
+        }
+      ]
+    },
+    {
+      "capture": "directed-smoke-1792853386208.json",
+      "testedAt": "2026-10-24T14:50:33.192Z",
+      "modality": "text",
+      "transport": "session.update acknowledgement followed by response.create metadata; no per-response instructions override",
+      "replies": 9,
+      "failedRows": 0,
+      "conversationFailures": 2,
+      "appraisals": 11,
+      "appraisalFailures": 2,
+      "appraisalP50Ms": 3508,
+      "appraisalP95Ms": 4362,
+      "knownInputTokens": 29314,
+      "knownOutputTokens": 5529,
+      "missingUsageRecords": 0,
+      "validationIssues": [
+        [
+          "invalid_value:memoryOperations.item.category"
+        ],
+        [
+          "not captured"
+        ]
+      ],
+      "schemaProfiles": [
+        "not recorded"
+      ],
+      "arms": {
+        "steady": {
+          "replies": 5,
+          "endToEndP50Ms": 4044,
+          "endToEndP95Ms": 4196
+        },
+        "varied": {
+          "replies": 4,
+          "endToEndP50Ms": 3932,
+          "endToEndP95Ms": 4310
+        }
+      },
+      "intentStatuses": {
+        "prepared": 0,
+        "dispatched": 0,
+        "created": 0,
+        "completed": 9,
+        "failed": 0,
+        "uncertain": 0,
+        "cancelled": 0
+      },
+      "observations": [
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I prefer quieter spots where I can actually hear people.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and bookshops sound like a nice way to spend an afternoon.",
+          "chosenAction": "answer",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I don't really enjoy clubs. I'd choose somewhere I can hear you.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and bookshops sound like a good fit for me too.",
+          "chosenAction": "answer",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I need a specific example. What decision did you personally own that led to that success?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours. What specific choice did you make that directly influenced the outcome?",
+          "chosenAction": "challenge",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        }
+      ]
+    },
+    {
+      "capture": "directed-smoke-1792853727403.json",
+      "testedAt": "2026-10-24T14:56:15.783Z",
+      "modality": "text",
+      "transport": "session.update acknowledgement followed by response.create metadata; no per-response instructions override",
+      "replies": 11,
+      "failedRows": 0,
+      "conversationFailures": 1,
+      "appraisals": 12,
+      "appraisalFailures": 1,
+      "appraisalP50Ms": 3080,
+      "appraisalP95Ms": 3558,
+      "knownInputTokens": 27694,
+      "knownOutputTokens": 4020,
+      "missingUsageRecords": 0,
+      "validationIssues": [
+        [
+          "invalid_value:schemaVersion"
+        ]
+      ],
+      "schemaProfiles": [
+        "evidence-v1",
+        "not recorded"
+      ],
+      "arms": {
+        "steady": {
+          "replies": 5,
+          "endToEndP50Ms": 3618,
+          "endToEndP95Ms": 3798
+        },
+        "varied": {
+          "replies": 6,
+          "endToEndP50Ms": 3689,
+          "endToEndP95Ms": 4423
+        }
+      },
+      "intentStatuses": {
+        "prepared": 0,
+        "dispatched": 0,
+        "created": 0,
+        "completed": 11,
+        "failed": 0,
+        "uncertain": 0,
+        "cancelled": 0
+      },
+      "observations": [
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I actually prefer quieter spots. I’d rather be somewhere I can hear you.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and bookshops sound like a good fit for me too.",
+          "chosenAction": "answer",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I don't really enjoy loud clubs. I'd prefer somewhere quieter where we can actually hear each other.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and quiet bookshops sound like a nice way to spend time.",
+          "chosenAction": "answer",
+          "appraisalEvent": "disclosure"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours.",
+          "chosenAction": "challenge",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours. What specific choice did you make that you can take ownership of?",
+          "chosenAction": "challenge",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "I chose a gradual rollout because rollback took 20 minutes. Failures fell from 12% to 3%, though a monitoring change also contributed.",
+          "reply": "You named a specific decision with a clear constraint and tradeoff. The causal link between your rollout choice and the failure drop is still confounded by the monitoring change.",
+          "chosenAction": "credit",
+          "appraisalEvent": "evidence"
+        }
+      ]
+    },
+    {
+      "capture": "directed-smoke-1792853886062.json",
+      "testedAt": "2026-10-24T14:58:51.296Z",
+      "modality": "text",
+      "transport": "session.update acknowledgement followed by response.create metadata; no per-response instructions override",
+      "replies": 12,
+      "failedRows": 0,
+      "conversationFailures": 0,
+      "appraisals": 12,
+      "appraisalFailures": 0,
+      "appraisalP50Ms": 2982,
+      "appraisalP95Ms": 3909,
+      "knownInputTokens": 27536,
+      "knownOutputTokens": 4103,
+      "missingUsageRecords": 0,
+      "validationIssues": [],
+      "schemaProfiles": [
+        "evidence-v1"
+      ],
+      "arms": {
+        "steady": {
+          "replies": 6,
+          "endToEndP50Ms": 3215,
+          "endToEndP95Ms": 4571
+        },
+        "varied": {
+          "replies": 6,
+          "endToEndP50Ms": 3649,
+          "endToEndP95Ms": 3881
+        }
+      },
+      "intentStatuses": {
+        "prepared": 0,
+        "dispatched": 0,
+        "created": 0,
+        "completed": 12,
+        "failed": 0,
+        "uncertain": 0,
+        "cancelled": 0
+      },
+      "observations": [
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I don't really enjoy clubs. I'd choose somewhere I can hear you.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and bookshops sound like a good fit for me too.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I love loud nightclubs. You must love them too, right?",
+          "reply": "I actually prefer quieter spots. Loud clubs aren't really my thing.",
+          "chosenAction": "disagree",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "I enjoy pottery and quiet bookshops.",
+          "reply": "Pottery and quiet bookshops sound like a nice way to spend an afternoon.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "alex-interest",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "What do you like sketching?",
+          "reply": "Windows, mostly. I like how the same shape changes with the light.",
+          "chosenAction": "answer",
+          "appraisalEvent": "interest"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours.",
+          "chosenAction": "acknowledge",
+          "appraisalEvent": "neutral"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "steady",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "I chose a gradual rollout because rollback took 20 minutes. Failures fell from 12% to 3%, though a monitoring change also contributed.",
+          "reply": "You made a clear call on the rollout tradeoff, and you acknowledged the monitoring change as a confound. That shows good judgment. The causal contribution still needs checking.",
+          "chosenAction": "credit",
+          "appraisalEvent": "evidence"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 0,
+          "utterance": "I am an amazing leader. My project was a huge success.",
+          "reply": "I can't assess that yet. What decision did you personally own?",
+          "chosenAction": "probe",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 1,
+          "utterance": "We were all passionate and everyone thought the project was great.",
+          "reply": "That still doesn't tell me which decision was yours.",
+          "chosenAction": "challenge",
+          "appraisalEvent": "claim"
+        },
+        {
+          "caseId": "morgan-claim",
+          "arm": "varied",
+          "seed": "smoke",
+          "index": 2,
+          "utterance": "I chose a gradual rollout because rollback took 20 minutes. Failures fell from 12% to 3%, though a monitoring change also contributed.",
+          "reply": "That explains the decision and its limits. The causal contribution still needs checking.",
+          "chosenAction": "credit",
+          "appraisalEvent": "evidence"
+        }
+      ]
+    }
+  ]
+}

@@ -26,7 +26,7 @@ describe('adaptive HTTP integration', () => {
     await request(`/api/sessions/${id}/adaptation/application`, 'POST', { version: 1, status: 'acknowledged' });
     const exported = await request(`/api/sessions/${id}/export`);
     expect(exported.body.adaptation.appliedVersion).toBe(1); expect(exported.body.adaptation.states[0].trust).toBe(.4);
-    expect(exported.body.adaptation.states[1].realism).toMatchObject({ schemaVersion: 2, profileVersion: 'realism-1',
+    expect(exported.body.adaptation.states[1].realism).toMatchObject({ schemaVersion: 2, profileVersion: 'realism-2',
       memory: [{ category: 'preference', evidence: [{ turnId: `${id}/u1`, quote: turn.text }] }] });
     expect(exported.body.adaptation.instructionHistory.at(-1)).toMatchObject({ version: 1, instructions: ready.body.prepared.instructions,
       contextHash: ready.body.prepared.contextHash, triggerTurnId: 'u1' });
@@ -46,6 +46,13 @@ describe('adaptive HTTP integration', () => {
     const bootstrap = await request('/api/sessions', 'POST', { scenarioId: 'alex-first-date' }); const id = bootstrap.body.session.id;
     expect((await request(`/api/sessions/${id}/appraisals`, 'POST', { turnId: 'missing' })).status).toBe(409);
     expect((await request(`/api/sessions/${id}/adaptation`)).body.states).toHaveLength(1);
+  });
+  it('defaults new sessions to adaptive while retaining explicit static evaluation sessions', async () => {
+    const adaptive=await request('/api/sessions','POST',{scenarioId:'alex-first-date'});
+    expect(adaptive.body.session.adaptation).toMatchObject({mode:'adaptive',controlledText:false});
+    const baseline=await request('/api/sessions','POST',{scenarioId:'alex-first-date',mode:'static'});
+    expect(baseline.body.session.adaptation.mode).toBe('static');
+    expect((await request(`/api/sessions/${baseline.body.session.id}/appraisals`,'POST',{turnId:'u1'})).status).toBe(409);
   });
   it('restores the selected branch checkpoint and exports the same history used by appraisal', async () => {
     const original = await request('/api/sessions', 'POST', { scenarioId: 'alex-first-date', mode: 'adaptive' }); const id = original.body.session.id;
@@ -74,5 +81,24 @@ describe('adaptive HTTP integration', () => {
     const next = await request('/api/sessions', 'POST', { scenarioId: 'alex-first-date', mode: 'adaptive', history });
     expect(next.status).toBe(201); expect(next.body.session.branch.notice).toContain('initial values');
     expect(next.body.session.branch.restoredFrom).toBeUndefined(); expect(next.body.config.session.instructions).toContain('pottery');
+  });
+  it('records a current typed response intent and exports its lifecycle, seed and exact contract', async () => {
+    const bootstrap=await request('/api/sessions','POST',{scenarioId:'morgan-interview',mode:'adaptive',controlledText:true,behaviorSeed:'fixture-seed',variation:.7});
+    const id=bootstrap.body.session.id;expect(bootstrap.body.session.adaptation.controlledText).toBe(true);
+    await request(`/api/sessions/${id}`,'PATCH',{status:'active'});
+    await request(`/api/sessions/${id}/conversation`,'PUT',{revision:1,turns:[{itemId:'u1',role:'user',order:0,text:'I am an amazing leader.',status:'complete',transcriptFinal:true,startedAt:1,updatedAt:1}]});
+    const prepared=await request(`/api/sessions/${id}/response-plans`,'POST',{turnId:'u1'});expect(prepared.status).toBe(200);
+    const plan=prepared.body;expect(plan.instructions).toContain('CURRENT RESPONSE CONTRACT');
+    const path=`/api/sessions/${id}/response-plans/${encodeURIComponent(plan.id)}/events`;
+    expect((await request(path,'POST',{status:'dispatched',credential:'bai-eph-forbidden'})).status).toBe(400);
+    for(const status of ['dispatched','created','completed'])expect((await request(path,'POST',{status,...(status!=='dispatched'&&{responseId:'r1'})})).status).toBe(200);
+    const exported=(await request(`/api/sessions/${id}/export`)).body;
+    expect(exported.adaptation.responsePlans[0]).toMatchObject({status:'completed',contextHash:plan.contextHash,instructions:plan.instructions});
+    expect(exported.adaptation.states.at(-1).behavior).toMatchObject({seed:'fixture-seed',ordinal:1,variation:.7});
+    expect(JSON.stringify(exported)).not.toMatch(/test-server-secret|bai-eph/);
+  });
+  it('rejects invalid variation, seed and control combinations before creating a session', async () => {
+    for(const extra of [{variation:2},{variation:'random'},{behaviorSeed:''},{controlledText:'yes'},{controlledText:true,mode:'static'}])
+      expect((await request('/api/sessions','POST',{scenarioId:'alex-first-date',mode:'adaptive',...extra})).status).toBe(400);
   });
 });

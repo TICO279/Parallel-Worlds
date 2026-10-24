@@ -2,16 +2,20 @@
 
 ## Operation and configuration
 
-Static mode remains the default. Adaptive mode is **asynchronous**:
+New page conversations and omitted API modes default to adaptive. Static is retained
+only as an explicit API option for scripts and evaluations. Automatic adaptive mode is **asynchronous**:
 
 `finalized user transcript → recorded snapshot → ordered backend appraisal → validated state version → composed instructions → idle-boundary session.update → acknowledged guidance for future responses`.
 
-Higgs retains automatic server VAD and interruptions. Appraisal never delays its
+Automatic mode retains server VAD and interruptions. Appraisal never delays its
 response path or sends an extra `response.create`. The client waits until generation
 and playback finish and the user is neither speaking nor awaiting an automatic reply
 before sending queued guidance. A state may be committed before its guidance is applied.
 An update already sent cannot be unsent if new speech begins; no same-turn guarantee
 is claimed. The optional development panel distinguishes committed/acknowledged versions.
+
+The [directed typed experiment](agency-implementation.md) is a separate adaptive reply-timing
+option. It waits for a saved current-turn acting plan and does not enable synchronous voice control.
 
 The existing `.env` is preserved. Defaults work with the existing Boson key:
 
@@ -152,7 +156,7 @@ is no database, branch execution, import/restore action, or rewind interface.
 
 | Method / route | Addition |
 | --- | --- |
-| `POST /api/sessions` | Optional `mode: static | adaptive`; default static |
+| `POST /api/sessions` | Optional `mode: static | adaptive`; default adaptive |
 | `GET /api/sessions/:id/adaptation` | History, prepared instructions, provider and timing mode |
 | `POST /api/sessions/:id/appraisals` | Idempotently process an already-recorded finalized `turnId` |
 | `POST /api/sessions/:id/adaptation/application` | Record known `version` as acknowledged, deferred or failed |
