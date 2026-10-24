@@ -8,7 +8,10 @@ import { AdaptationCoordinator } from './adaptation/coordinator';
 import { adaptationConfig, type AdaptationConfig } from './adaptation/config';
 import type { AppraisalProvider } from './adaptation/providers';
 import { z } from 'zod';
+import { prepareBranch } from './branching';
 const metricPayload = z.strictObject({ turnId: z.string().max(200), responseId: z.string().max(200).optional(),
+  inputKind: z.enum(['text', 'audio']).optional(),
+  guidanceUncertain: z.boolean().optional(),
   speechEndedAt: z.number().finite().optional(), speechStoppedAt: z.number().finite().optional(), transcriptFinalAt: z.number().finite().optional(),
   responseCreatedAt: z.number().finite().optional(), firstAudioAt: z.number().finite().optional(), playbackStartedAt: z.number().finite().optional(),
   appliedStateVersion: z.number().int().nonnegative() });
@@ -37,10 +40,14 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     if (!scenario) throw new ApiError(400, 'Choose a valid scenario.');
     const mode = req.body?.mode ?? 'static';
     if (mode !== 'static' && mode !== 'adaptive') throw new ApiError(400, 'Choose static or adaptive mode.');
+    const resumed = prepareBranch(req.body?.history, scenario, store, mode === 'adaptive');
     const credential = await mintCredential(options.apiKey, options.fetcher);
-    const created = store.create(scenario); coordinator.initialize(created.id, mode);
-    const session = store.get(created.id);
-    res.status(201).json({ session, config: buildHiggsConfig(buildContext(scenario, mode === 'adaptive' ? coordinator.current(session.id) : {})), credential });
+    const created = store.create(scenario);
+    if (resumed.branch) store.setBranch(created.id, resumed.branch);
+    coordinator.initialize(created.id, mode, resumed.restored);
+    const prepared = coordinator.instructions(created.id); const session = store.get(created.id);
+    const config = { ...buildContext(scenario), instructions: prepared.instructions };
+    res.status(201).json({ session, config: buildHiggsConfig(config), credential });
   });
   app.patch('/api/sessions/:id', (req, res) => {
     const session = store.lifecycle(req.params.id, req.body);
@@ -48,8 +55,8 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     res.json(session);
   });
   app.get('/api/sessions/:id/adaptation', (req, res) => {
-    const data = coordinator.get(req.params.id);
-    res.json({ ...data, prepared: coordinator.instructions(req.params.id), steering: 'experimental', synchronousQualified: false });
+    const prepared = coordinator.instructions(req.params.id);
+    res.json({ ...coordinator.get(req.params.id), prepared, steering: 'experimental', synchronousQualified: false });
   });
   app.post('/api/sessions/:id/appraisals', async (req, res) => {
     const session = store.get(req.params.id);
@@ -62,7 +69,7 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
   app.post('/api/sessions/:id/adaptation/application', (req, res) => {
     const data = coordinator.get(req.params.id);
     const { version, status } = req.body ?? {};
-    if (!Number.isSafeInteger(version) || !data.states.some(s => s.version === version) || !['acknowledged', 'failed', 'deferred'].includes(status)) throw new ApiError(400, 'Invalid state application.');
+    if (!Number.isSafeInteger(version) || !data.states.some(s => s.version === version) || !['acknowledged', 'failed', 'deferred', 'dispatched'].includes(status)) throw new ApiError(400, 'Invalid state application.');
     if (status === 'acknowledged' && version > data.appliedVersion) data.appliedVersion = version;
     if (!data.applications.some(a => a.version === version && a.status === status)) data.applications.push({ version, status, at: Date.now() });
     store.setAdaptation(req.params.id, data); res.json(data);

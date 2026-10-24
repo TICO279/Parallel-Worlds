@@ -7,10 +7,13 @@ import type { AdaptationConfig } from './config';
 import { initialState, transitionState } from './engine';
 import { createProvider, type AppraisalProvider } from './providers';
 import { AppraisalProviderError, unpackAppraisalResult, type AppraisalTelemetry } from './results';
+import { branchTurns } from '../branching';
+import { transitionRealism, type EvidenceSource } from './realism';
+import { createHash } from 'node:crypto';
 
-export function appraisalContext(turns: Turn[], beforeOrder: number) {
+export function appraisalContext(turns: Turn[], beforeOrder: number, sessionId?: string) {
   return turns.filter(t => t.order < beforeOrder && t.transcriptFinal && t.text && t.status === 'complete')
-    .slice(-6).map(t => ({ role: t.role, text: t.text!.slice(0, 2000) }));
+    .slice(-6).map(t => ({ role: t.role, text: t.text!.slice(0, 2000), ...(sessionId && { turnId: t.order < 0 ? t.itemId : `${sessionId}/${t.itemId}` }) }));
 }
 export class AdaptationCoordinator {
   private queue = new Map<string, Promise<void>>();
@@ -20,12 +23,21 @@ export class AdaptationCoordinator {
     this.provider = provider ?? createProvider(config);
     store.subscribe((id, turn) => { if (turn.role === 'user') void this.enqueue(id); });
   }
-  initialize(id: string, mode: 'static' | 'adaptive') {
+  initialize(id: string, mode: 'static' | 'adaptive', restored?: DynamicCharacterState) {
     const session = this.store.get(id); const scenario = this.scenarios.find(s => s.id === session.scenarioId)!;
+    const base = initialState(scenario.character, id, Date.now());
+    const state = restored ? { ...base, comfort: restored.comfort, trust: restored.trust, curiosity: restored.curiosity,
+      engagement: restored.engagement, tone: restored.tone, goal: restored.goal, guidance: restored.guidance,
+      ...(restored.realism && { realism: { ...structuredClone(restored.realism), memory: restored.realism.memory.filter(n =>
+        n.evidence.every(e => session.branch?.history.some(h => h.nodeId === e.turnId))).map(n => {
+          const orders = n.evidence.map(e => session.branch!.history.findIndex(h => h.nodeId === e.turnId) - session.branch!.history.length);
+          return { ...structuredClone(n), createdOrder: Math.min(...orders), updatedOrder: Math.max(...orders) };
+        }) } }) } : base;
     this.store.setAdaptation(id, { mode, timingMode: 'asynchronous', provider: this.provider.name,
       ...(this.provider.name !== 'mock' && { model: this.config.model }),
       appraisalTimeoutMs: this.config.timeoutMs, maxStateDelta: this.config.maxDelta,
-      states: [initialState(scenario.character, id, Date.now())], attempts: [], applications: [], latencies: [], appliedVersion: 0, pending: false });
+      states: [state], attempts: [], applications: [], latencies: [], appliedVersion: 0, pending: false,
+      memoryCapacity: this.config.memoryCapacity ?? 8, maxOutputTokens: this.config.maxOutputTokens ?? 1600, instructionHistory: [] });
   }
   get(id: string): AdaptationData {
     const data = this.store.get(id).adaptation;
@@ -37,7 +49,19 @@ export class AdaptationCoordinator {
   instructions(id: string) {
     const session = this.store.get(id); const scenario = this.scenarios.find(s => s.id === session.scenarioId)!;
     const state = this.current(id);
-    return { version: state.version, instructions: buildContext(scenario, state, appraisalContext(session.turns, state.lastProcessedOrder + 1)).instructions };
+    const context = appraisalContext([...branchTurns(session.branch?.history), ...session.turns], state.lastProcessedOrder + 1);
+    // Automatic replies may already exist: never dispatch an acknowledgement of a past utterance.
+    const dynamic = this.get(id).mode === 'adaptive' ? state : {};
+    const instructions = buildContext(scenario, dynamic, context).instructions;
+    const turnInstructions = buildContext(scenario, dynamic, context, { includeTurnBrief: true }).instructions;
+    const contextHash = createHash('sha256').update(instructions).digest('hex');
+    const data = this.get(id);
+    if (!data.instructionHistory?.some(r => r.version === state.version && r.contextHash === contextHash)) {
+      data.instructionHistory ??= []; data.instructionHistory.push({ version: state.version, contextHash, instructions,
+        persistentInstructions: instructions, turnInstructions, triggerTurnId: state.lastProcessedTurnId ?? undefined, at: Date.now(), compilerVersion: 'realism-1' });
+      this.store.setAdaptation(id, data);
+    }
+    return { version: state.version, instructions, persistentInstructions: instructions, turnInstructions, contextHash, triggerTurnId: state.lastProcessedTurnId ?? undefined };
   }
   cancel(id: string) { this.controllers.get(id)?.abort(); }
   enqueue(id: string): Promise<void> {
@@ -69,18 +93,23 @@ export class AdaptationCoordinator {
           controller.signal.addEventListener('abort', () => reject(new Error('Appraisal timed out or was cancelled.')), { once: true });
           timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
         });
-        const output = await Promise.race([this.provider.appraise({ character: scenario.character, previous: structuredClone(previous),
-          utterance: turn.text.slice(0, 6000), context: appraisalContext(session.turns, turn.order) }, controller.signal), aborted]);
+        const allTurns = [...branchTurns(session.branch?.history), ...session.turns];
+        const output = await Promise.race([this.provider.appraise({ character: scenario.character, previous: structuredClone(previous), turnId: `${id}/${turn.itemId}`,
+          utterance: turn.text.slice(0, 6000), context: appraisalContext(allTurns, turn.order, id) }, controller.signal), aborted]);
         const result = unpackAppraisalResult(output); telemetry = { ...telemetry, ...result.telemetry };
         const fresh = this.get(id); session = this.store.get(id);
         if (controller.signal.aborted || ['closed', 'error'].includes(session.status) || fresh.states.at(-1)!.version !== previous.version || session.turns.find(t => t.itemId === turn.itemId)?.text !== turn.text)
           throw new Error('Appraisal became stale or the session ended.');
         const appraisal = result.appraisal;
-        const state = transitionState(previous, appraisal, turn, previous.version, Date.now(), this.config.maxDelta);
+        const sources: EvidenceSource[] = allTurns.filter(t => t.order <= turn.order && t.status === 'complete' && t.transcriptFinal && t.text)
+          .map(t => ({ turnId: t.order < 0 ? t.itemId : `${id}/${t.itemId}`, role: t.role, text: t.text!, order: t.order }));
+        const state = 'schemaVersion' in appraisal ? transitionRealism(previous, appraisal, turn, Date.now(), this.config.maxDelta, sources, this.config.memoryCapacity ?? 8, this.config.memoryTextLimit ?? 160) :
+          transitionState(previous, appraisal, turn, previous.version, Date.now(), this.config.maxDelta);
         fresh.states.push(state); fresh.pending = false;
         fresh.attempts.push({ turnId: turn.itemId, baseVersion: previous.version, status: 'committed', provider: this.provider.name,
           latencyMs: Math.round(performance.now() - started), at: Date.now(), appraisal, stateVersion: state.version, ...telemetry });
         this.store.setAdaptation(id, fresh);
+        this.instructions(id);
       } catch (error) {
         if (error instanceof AppraisalProviderError) telemetry = { ...telemetry, ...error.telemetry };
         const fresh = this.get(id); fresh.pending = false;

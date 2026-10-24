@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { Scenario, StoredSession, Turn } from '../shared/domain';
+import type { BranchContext, Scenario, StoredSession, Turn } from '../shared/domain';
 import type { CompletedTurnListener } from './orchestrator';
 import { ApiError } from './higgs';
 import type { AdaptationData } from '../shared/characterState';
@@ -33,6 +33,11 @@ export class ConversationStore {
   private listeners: CompletedTurnListener[] = [];
   constructor(private completed?: CompletedTurnListener) {}
   subscribe(listener: CompletedTurnListener) { this.listeners.push(listener); }
+  setBranch(id: string, branch: BranchContext) {
+    const session = this.sessions.get(id);
+    if (!session) throw new ApiError(404, 'Session not found.');
+    session.branch = structuredClone(branch);
+  }
   setAdaptation(id: string, data: AdaptationData) {
     const session = this.sessions.get(id);
     if (!session) throw new ApiError(404, 'Session not found.');

@@ -1,11 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import type { ConversationTree, TreeNode } from '../shared/domain';
 import { childMap, pathTo } from '../shared/tree';
 interface Props {
   tree: ConversationTree; characterName: string; selectedId: string | null; disabled: boolean;
-  onSelect(id: string | null): void; onRevert(id: string): void; onClear(): void;
+  onSelect(id: string | null): void; onRevert(id: string): void; onContinue(id: string): void; onClear(): void;
 }
-export function TreeView({ tree, characterName, selectedId, disabled, onSelect, onRevert, onClear }: Props) {
+export function TreeView({ tree, characterName, selectedId, disabled, onSelect, onRevert, onContinue, onClear }: Props) {
   const [confirmClear, setConfirmClear] = useState(false);
   const children = childMap(tree); const onPath = new Set(pathTo(tree, tree.headId).map(n => n.id));
   const nodes = Object.values(tree.nodes);
@@ -22,14 +22,15 @@ export function TreeView({ tree, characterName, selectedId, disabled, onSelect, 
     </>;
   };
   // Straight runs stay in one column; a fork indents each alternative under a labelled branch.
-  const from = (parentId: string | null): ReactNode => {
-    const kids = children.get(parentId) ?? [];
-    if (!kids.length) return null;
-    if (kids.length === 1) return <>{line(kids[0])}{from(kids[0].id)}</>;
-    return <div className="tree-fork"><span className="fork-label">⑂ Branches here · {kids.length}</span>
-      {kids.map((k, i) => <div key={k.id} className={`tree-branch ${onPath.has(k.id) ? 'on-path' : ''}`}>
-        <span className="branch-label">Branch {i + 1}</span>{line(k)}{from(k.id)}</div>)}</div>;
-  };
+  const rows: { node: TreeNode; depth: number; label?: string }[] = [];
+  const stack = [...(children.get(null) ?? [])].reverse().map(node => ({ node, depth: 0, label: undefined as string | undefined }));
+  const seen = new Set<string>();
+  while (stack.length) {
+    const row = stack.pop()!; if (seen.has(row.node.id)) continue;
+    seen.add(row.node.id); rows.push(row);
+    const kids = children.get(row.node.id) ?? [];
+    for (let i = kids.length - 1; i >= 0; i--) stack.push({ node: kids[i], depth: row.depth + (kids.length > 1 ? 1 : 0), label: kids.length > 1 ? `Branch ${i + 1}` : undefined });
+  }
   return <section className="tree-panel" aria-labelledby="tree-title">
     <div className="tree-header">
       <div><span className="eyebrow">PARALLEL WORLDS</span><h3 id="tree-title">Conversation tree · {branches} {branches === 1 ? 'branch' : 'branches'}</h3></div>
@@ -38,7 +39,11 @@ export function TreeView({ tree, characterName, selectedId, disabled, onSelect, 
     </div>
     <div className="tree-scroll">
       {tree.headId === null && <div className="tree-node on-path"><span className="tree-here">you are here · before your first line</span></div>}
-      {from(null)}
+      {rows.map(({ node, depth, label }) => <div key={node.id} style={{ marginLeft: Math.min(depth * 14, 84) }}>
+        {label && <span className="branch-label">⑂ {label}</span>}{line(node)}
+        {node.status === 'interrupted' && <small className="turn-note">Interrupted reply retained for inspection; excluded from branch replay.</small>}
+        {!children.get(node.id)?.length && tree.headId !== node.id && <button className="revert-button" disabled={disabled} onClick={() => onContinue(node.id)}>Use this branch</button>}
+      </div>)}
     </div>
   </section>;
 }

@@ -7,6 +7,7 @@ import { initialState } from '../server/adaptation/engine';
 import { scenarios } from '../server/orchestrator';
 import { ConversationStore } from '../server/store';
 import type { Turn } from '../shared/domain';
+import { realismProposal } from './helpers/realism';
 
 const appraisal = { interpretation: 'A personal disclosure.', deltas: { comfort: .04, trust: .05, curiosity: .03, engagement: .04 },
   tone: 'warm', goal: 'Build understanding.', guidance: 'Acknowledge the disclosure gently.' };
@@ -115,6 +116,15 @@ describe('DeepSeek configuration and JSON adapter', () => {
     const result = await new OpenAIAppraisalProvider('test-secret', 'configured-model', fetcher).appraise(input, new AbortController().signal);
     expect(unpackAppraisalResult(result).telemetry).toMatchObject({ model: 'configured-model', usage: { inputTokens: 250, outputTokens: 90, totalTokens: 340 } });
   });
+  it('requires the evidence-based schema for identified production turns and uses the configured output budget', async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(completion(JSON.stringify(realismProposal('s/u1', input.utterance)))))) as typeof fetch;
+    const provider = new DeepSeekAppraisalProvider('key', 'deepseek-flash', fetcher, 1800);
+    const result = await provider.appraise({ ...input, turnId: 's/u1' }, new AbortController().signal);
+    expect(unpackAppraisalResult(result).appraisal).toMatchObject({ schemaVersion: 2, evidence: [{ turnId: 's/u1', quote: input.utterance }] });
+    const body = JSON.parse(String(vi.mocked(fetcher).mock.calls[0][1]?.body));
+    expect(body.max_tokens).toBe(1800); expect(body.messages[0].content).toContain('memoryOperations');
+    await expect(providerFor(completion()).appraise({ ...input, turnId: 's/u1' }, new AbortController().signal)).rejects.toThrow('invalid structured output');
+  });
 });
 
 describe('DeepSeek coordination and recording', () => {
@@ -127,7 +137,11 @@ describe('DeepSeek coordination and recording', () => {
     return store.get(session.id).adaptation!;
   }
   it('exports request-specific model, latency and usage and retains asynchronous operation', async () => {
-    const data = await run(providerFor(completion()));
+    const provider = new DeepSeekAppraisalProvider('test-secret', 'deepseek-flash', vi.fn(async (_url, request) => {
+      const input = JSON.parse(JSON.parse(String(request?.body)).messages[1].content);
+      return new Response(JSON.stringify(completion(JSON.stringify(realismProposal(input.turnId, input.utterance)))));
+    }) as typeof fetch);
+    const data = await run(provider);
     expect(data).toMatchObject({ provider: 'deepseek', model: 'deepseek-flash', timingMode: 'asynchronous', appliedVersion: 0 });
     expect(data.states).toHaveLength(2); expect(data.attempts[0]).toMatchObject({ status: 'committed', model: 'deepseek-flash', usage: normalizedUsage });
     expect(data.attempts[0].latencyMs).toBeGreaterThanOrEqual(0); expect(JSON.stringify(data)).not.toMatch(/test-secret|must-not-persist/);

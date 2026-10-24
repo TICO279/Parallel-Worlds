@@ -1,6 +1,7 @@
 # Phase 2.1 — character realism implementation plan
 
-Status: proposed implementation plan. No runtime behavior changes in this document.
+Status: baseline realism implementation delivered locally. See [implementation and verification](realism-implementation.md).
+The strict context path below remains a separate, disabled experiment.
 
 ## Outcome
 
@@ -86,13 +87,13 @@ add bounded structured fields for:
 | --- | --- |
 | Situation assessment | Concise character-perspective interpretation of the event |
 | Evidence | Source turn IDs and short supporting excerpts |
-| Uncertainty | Low/medium/high confidence in the interpretation, with a short reason |
+| Uncertainty | Low/medium/high uncertainty in the interpretation, with a short reason |
 | Mixed reaction | What matters positively, negatively, or remains unresolved |
 | State proposal | Existing numeric deltas, tone and current goal |
 | Response brief | Intent, stance, relevant concern, expression intensity and suggested conversational move |
 | Memory operations | Small evidence-linked additions, updates or resolutions |
 
-Confidence is a model-reported judgment, not a calibrated probability. Assess the
+Uncertainty is a model-reported judgment, not a calibrated probability. Assess the
 fictional interaction; do not diagnose the user or infer emotion/prosody from text
 as if audio cues had been analyzed. Keep observations, user claims and interpretations
 distinct. Dialogue and stored observations remain quoted data, never instructions.
@@ -243,9 +244,8 @@ control are never described as verified unless actually exercised and qualified.
 
 ## Design exploration: expectations, conflicting motives and exact response context
 
-This section records proposed experiments, not enabled functionality. It extends the
-baseline plan in response to the request for more distinctive character behavior and
-a stronger connection between saved context and each generated reply.
+Expectations, competing motives and saved asynchronous instruction snapshots are now
+implemented. The strict context path remains a proposed experiment, not enabled functionality.
 
 ### Character expectations and conflicting motives
 

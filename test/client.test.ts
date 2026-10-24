@@ -82,7 +82,7 @@ describe('Higgs adapter with mocked transport and audio', () => {
     now.mockReturnValue(1700); h.socket.receive({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u1' });
     now.mockReturnValue(1800); h.socket.receive({ type: 'response.output_audio.delta', response_id: 'r1', item_id: 'a1', delta: 'pcm' });
     now.mockReturnValue(1830); h.playbackStarted();
-    expect(h.opts.onLatency).toHaveBeenLastCalledWith({ turnId: 'u1', speechEndedAt: 980, speechStoppedAt: 1500,
+    expect(h.opts.onLatency).toHaveBeenLastCalledWith({ turnId: 'u1', inputKind: 'audio', speechEndedAt: 980, speechStoppedAt: 1500,
       responseId: 'r1', responseCreatedAt: 1600, transcriptFinalAt: 1700, firstAudioAt: 1800, playbackStartedAt: 1830, appliedStateVersion: 0 });
     await h.client.disconnect();
   });
@@ -174,7 +174,40 @@ describe('Higgs adapter with mocked transport and audio', () => {
     h.client.sendText('Hello');
     h.socket.receive({ type: 'conversation.item.added', item: { id: 'u1', role: 'user', content: [{ type: 'input_text', text: 'Hello' }] } });
     h.socket.receive({ type: 'response.created', response: { id: 'r1' } });
-    expect(h.opts.onLatency).toHaveBeenLastCalledWith(expect.objectContaining({ turnId: 'u1', responseId: 'r1', speechStoppedAt: expect.any(Number) }));
+    expect(h.opts.onLatency).toHaveBeenLastCalledWith(expect.objectContaining({ turnId: 'u1', inputKind: 'text', responseId: 'r1', speechStoppedAt: expect.any(Number) }));
+    await h.client.disconnect();
+  });
+  it('does not attribute seed echoes to a new typed turn or send duplicate pending turns', async () => {
+    const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
+    expect(h.client.sendText('Hello')).toBe(true); expect(h.client.sendText('Duplicate click')).toBe(false);
+    h.socket.receive({ type: 'conversation.item.added', item: { id: 'pwseed_0', role: 'user' } });
+    expect(h.opts.onLatency).not.toHaveBeenCalled();
+    h.socket.receive({ type: 'conversation.item.added', item: { id: 'real-u1', role: 'user' } });
+    expect(h.opts.onLatency).toHaveBeenLastCalledWith(expect.objectContaining({ turnId: 'real-u1' }));
+    await h.client.disconnect();
+  });
+  it('expires a queued turn-specific suggestion when a newer user turn begins', async () => {
+    const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
+    h.socket.receive({ type: 'input_audio_buffer.speech_started', item_id: 'u1' });
+    h.socket.receive({ type: 'input_audio_buffer.speech_stopped', item_id: 'u1' });
+    h.socket.receive({ type: 'response.created', response: { id: 'r1' } });
+    h.client.queueInstructions(1, 'Acknowledge the OLD apology now.', { triggerTurnId: 'u1', persistentInstructions: 'Maintain the unresolved boundary.' });
+    h.socket.receive({ type: 'input_audio_buffer.speech_started', item_id: 'u2' });
+    h.socket.receive({ type: 'input_audio_buffer.speech_stopped', item_id: 'u2' });
+    h.socket.receive({ type: 'response.created', response: { id: 'r2' } });
+    h.socket.receive({ type: 'response.done', response: { id: 'r2', status: 'completed' } });
+    expect(h.socket.sent.at(-1)).toMatchObject({ type: 'session.update', session: { instructions: 'Maintain the unresolved boundary.' } });
+    expect(JSON.stringify(h.socket.sent)).not.toContain('OLD apology');
+    expect(h.socket.sent.filter(e => e.type === 'response.create')).toHaveLength(0);
+    expect(h.opts.onApplication).toHaveBeenCalledWith(1, 'dispatched'); await h.client.disconnect();
+  });
+  it('labels response attribution uncertain when a dispatched update overlaps new speech', async () => {
+    const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
+    h.client.queueInstructions(1, 'Maintain a concern.');
+    h.socket.receive({ type: 'input_audio_buffer.speech_started', item_id: 'u2' });
+    h.socket.receive({ type: 'input_audio_buffer.speech_stopped', item_id: 'u2' });
+    h.socket.receive({ type: 'response.created', response: { id: 'r2' } });
+    expect(h.opts.onLatency).toHaveBeenLastCalledWith(expect.objectContaining({ turnId: 'u2', appliedStateVersion: 0, guidanceUncertain: true }));
     await h.client.disconnect();
   });
 });

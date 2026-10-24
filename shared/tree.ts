@@ -1,4 +1,5 @@
-import type { ConversationTree, ProtocolEvent, TreeNode, Turn } from './domain';
+import type { BranchHistoryItem, ConversationTree, ProtocolEvent, TreeNode, Turn } from './domain';
+import type { DynamicCharacterState } from './characterState';
 /** The tree is the source of truth; each Higgs session only replays one path of it. */
 export const SEED_PREFIX = 'pwseed_';
 export const emptyTree = (): ConversationTree => ({ nodes: {}, headId: null });
@@ -23,7 +24,7 @@ export function syncSession(tree: ConversationTree, baseId: string | null, sessi
     // Speech or replies that ended without any text are not lines you can revert to or replay.
     if (!t.text && (t.status === 'incomplete' || t.status === 'interrupted')) continue;
     const id = `${sessionId}/${t.itemId}`;
-    nodes[id] = { id, parentId, sessionId, role: t.role, text: t.text ?? '', status: t.status, createdAt: t.startedAt,
+    nodes[id] = { ...tree.nodes[id], id, itemId: t.itemId, parentId, sessionId, role: t.role, text: t.text ?? '', status: t.status, createdAt: t.startedAt,
       ...(t.playedMs !== undefined && { playedMs: t.playedMs }), ...(t.transcriptionFailed && { transcriptionFailed: true }) };
     parentId = id;
   }
@@ -36,10 +37,26 @@ export function revertTo(tree: ConversationTree, nodeId: string): ConversationTr
 }
 /** Text-only replay for a fresh Higgs session: Boson skips audio content and rejects system messages. */
 export function seedEvents(path: TreeNode[]): ProtocolEvent[] {
-  return path.filter(n => n.text.trim()).map((n, i) => ({ type: 'conversation.item.create', item: {
+  return branchHistory(path).map((n, i) => ({ type: 'conversation.item.create', item: {
     type: 'message', id: `${SEED_PREFIX}${i}`, role: n.role,
     content: [{ type: n.role === 'user' ? 'input_text' : 'text', text: n.text }] } }));
 }
+/** Only complete, heard dialogue can become factual history in another branch. */
+export function branchHistory(path: TreeNode[]): BranchHistoryItem[] {
+  return path.filter(n => n.status === 'complete' && !n.transcriptionFailed && n.text.trim()).map(n => ({
+    nodeId: n.id, sessionId: n.sessionId, itemId: n.itemId ?? n.id.slice(n.sessionId.length + 1), role: n.role, text: n.text,
+  }));
+}
+export function attachStates(tree: ConversationTree, sessionId: string, states: DynamicCharacterState[]): ConversationTree {
+  let changed = false; const nodes = { ...tree.nodes };
+  for (const state of states) {
+    if (!state.lastProcessedTurnId) continue;
+    const id = `${sessionId}/${state.lastProcessedTurnId}`; const node = nodes[id];
+    if (node && node.stateAfter?.id !== state.id) { nodes[id] = { ...node, stateAfter: state }; changed = true; }
+  }
+  return changed ? { ...tree, nodes } : tree;
+}
+export const checkpointAt = (path: TreeNode[]) => [...path].reverse().find(n => n.stateAfter)?.stateAfter;
 /** Replayed items echo back as conversation.item.added; they already live in the tree. */
 export const isSeedEcho = (e: ProtocolEvent) =>
   e.type === 'conversation.item.added' && String((e.item as { id?: unknown } | undefined)?.id ?? '').startsWith(SEED_PREFIX);

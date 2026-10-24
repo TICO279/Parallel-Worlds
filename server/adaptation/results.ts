@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { appraisalSchema, tokenUsageSchema, type TokenUsage } from '../../shared/characterState';
+import { appraisalSchema, realismAppraisalSchema, tokenUsageSchema, type TokenUsage } from '../../shared/characterState';
 
 // Request-local metadata keeps the provider interface unchanged and avoids shared
 // "last usage" state when different sessions appraise concurrently.
@@ -29,9 +29,9 @@ export function tokenUsage(raw: any, provider: 'deepseek' | 'openai'): TokenUsag
   const parsed = tokenUsageSchema.safeParse(value);
   return parsed.success ? parsed.data : undefined;
 }
-export function parseAppraisal(text: unknown, telemetry: AppraisalTelemetry) {
+export function parseAppraisal(text: unknown, telemetry: AppraisalTelemetry, requireRealism = false) {
   if (typeof text !== 'string' || !text.trim()) throw new AppraisalProviderError('Appraisal provider returned empty output.', telemetry);
-  try { return { kind: 'appraisal-result' as const, appraisal: appraisalSchema.parse(JSON.parse(text)), ...telemetry }; }
+  try { return { kind: 'appraisal-result' as const, appraisal: (requireRealism ? realismAppraisalSchema : appraisalSchema).parse(JSON.parse(text)), ...telemetry }; }
   catch { throw new AppraisalProviderError('Appraisal provider returned invalid structured output.', telemetry); }
 }
 export async function requestJson(fetcher: typeof fetch, url: string, key: string, body: unknown, signal: AbortSignal): Promise<any> {

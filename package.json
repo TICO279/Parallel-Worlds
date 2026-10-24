@@ -15,9 +15,12 @@
     "build": "pnpm typecheck && vite build",
     "start": "tsx server/index.ts",
     "probe": "tsx tools/probe.ts",
+    "probe:appraisal": "tsx tools/probe-appraisal.ts",
     "probe:adaptation": "tsx tools/probe-adaptation.ts",
     "probe:steering": "tsx tools/probe-steering.ts",
-    "evaluate:adaptation": "tsx tools/evaluate-adaptation.ts"
+    "evaluate:adaptation": "tsx tools/evaluate-adaptation.ts",
+    "evaluate:realism": "tsx tools/evaluate-realism.ts",
+    "review:realism": "tsx tools/review-realism.ts"
   },
   "dependencies": {
     "dotenv": "^18.0.9",

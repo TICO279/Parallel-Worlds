@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Conversation, ConversationTree, ProtocolEvent, Scenario, SessionBootstrap, StoredSession, TreeNode } from '../shared/domain';
 import { emptyConversation, orderedTurns, reduceTranscript } from '../shared/transcript';
-import { childMap, emptyTree, isSeedEcho, pathTo, revertTo, seedEvents, syncSession } from '../shared/tree';
+import { attachStates, branchHistory, checkpointAt, childMap, emptyTree, isSeedEcho, pathTo, revertTo, seedEvents, syncSession } from '../shared/tree';
 import { HiggsClient, type Activity, type ConnectionState } from './realtime/HiggsClient';
 import { api, SessionRecorder } from './recording';
 import { AdaptivePanel } from './AdaptivePanel';
 import type { AdaptationData, LatencyRecord } from '../shared/characterState';
 import { loadTrees, saveTrees } from './treeStorage';
 import { TreeView } from './TreeView';
+import { pollAdaptation } from './adaptationPolling';
 const lineText = (n: TreeNode) => n.text || (n.transcriptionFailed ? '[Transcription unavailable]'
   : n.role === 'user' && n.status !== 'incomplete' ? 'Transcribing…' : n.status === 'incomplete' ? '[Turn unfinished]' : '…');
 export function App() {
@@ -17,6 +18,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null); const [recording, setRecording] = useState<string | null>(null);
   const [session, setSession] = useState<StoredSession | null>(null);
   const [trees, setTrees] = useState<Record<string, ConversationTree>>(loadTrees); const [selectedLine, setSelectedLine] = useState<string | null>(null);
+  const treesRef = useRef(trees); treesRef.current = trees;
   // The tree node that was HEAD when the current session started; its live turns hang under it.
   const live = useRef<{ scenarioId: string; baseId: string | null; sessionId?: string } | null>(null);
   const seeds = useRef<ProtocolEvent[]>([]);
@@ -26,6 +28,7 @@ export function App() {
   const [mode, setMode] = useState<'static' | 'adaptive'>('static'); const modeRef = useRef(mode); modeRef.current = mode;
   const [adaptation, setAdaptation] = useState<AdaptationData | null>(null);
   const [latency, setLatency] = useState<LatencyRecord | null>(null); const [adaptationNotice, setAdaptationNotice] = useState<string | null>(null);
+  const [pollError, setPollError] = useState<string | null>(null); const [storageWarning, setStorageWarning] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const client = useRef<HiggsClient | null>(null); const state = useRef<Conversation>(emptyConversation());
   const recorder = useRef<SessionRecorder | null>(null); const recorders = useRef<SessionRecorder[]>([]);
@@ -36,12 +39,17 @@ export function App() {
       .then(([list, health]) => { if (mounted) { setScenarios(list); setConfigured(health.credentialsConfigured); } })
       .catch(() => { if (mounted) setError('Cannot reach the local server. Start the application with pnpm dev.'); });
     const c = new HiggsClient({
-      bootstrap: signal => api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: modeRef.current }) }),
+      bootstrap: async signal => {
+        const previous = recorder.current;
+        if (previous && !previous.synced) { await previous.flush(); if (!previous.synced) throw new Error('The previous conversation is still recording. Wait for it to synchronize, then start the branch again.'); }
+        return api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: modeRef.current,
+          history: branchHistory(pathTo(treesRef.current[selectedRef.current] ?? emptyTree(), live.current?.baseId ?? null)) }) });
+      },
       seed: () => seeds.current,
       onBootstrap: data => {
         state.current = emptyConversation(); setSession(data.session);
         if (live.current) live.current.sessionId = data.session.id;
-        sessionIdRef.current = data.session.id; setAdaptation(data.session.adaptation ?? null); setLatency(null); setAdaptationNotice(null);
+        sessionIdRef.current = data.session.id; setAdaptation(data.session.adaptation ?? null); setLatency(null); setPollError(null); setAdaptationNotice(data.session.branch?.notice ?? null);
         const r = new SessionRecorder(data.session.id, message => { if (recorder.current === r && mounted) setRecording(message); });
         recorder.current = r; recorders.current.push(r);
       },
@@ -86,20 +94,22 @@ export function App() {
     return () => { mounted = false; window.removeEventListener('beforeunload', leave); void c.disconnect(); recorders.current.forEach(r => r.dispose()); };
   }, []);
   useEffect(() => {
-    if (!session || connection !== 'ready' || session.adaptation?.mode !== 'adaptive') return;
-    let cancelled = false; let running = false; const controller = new AbortController();
-    const poll = async () => {
-      if (running || cancelled) return; running = true;
-      try {
-        const data = await api<AdaptationData & { prepared: { version: number; instructions: string } }>(`/api/sessions/${session.id}/adaptation`, { signal: controller.signal });
-        if (!cancelled) { setAdaptation(data); client.current?.queueInstructions(data.prepared.version, data.prepared.instructions); }
-      } catch { if (!cancelled) setAdaptationNotice('Adaptive state is temporarily unavailable. The voice conversation can continue.'); }
-      finally { running = false; }
-    };
-    void poll(); const timer = setInterval(() => void poll(), 500);
-    return () => { cancelled = true; controller.abort(); clearInterval(timer); };
+    if (!session || session.adaptation?.mode !== 'adaptive' || !['ready', 'closing', 'closed'].includes(connection)) return;
+    return pollAdaptation({
+      beforeLoad: connection === 'closed' ? () => recorder.current?.flush() ?? Promise.resolve() : undefined,
+      load: signal => api(`/api/sessions/${session.id}/adaptation`, { signal }),
+      onData: data => {
+        setAdaptation(data); setPollError(null);
+        setTrees(t => { const current = t[session.scenarioId]; if (!current) return t;
+          const next = attachStates(current, session.id, data.states); return next === current ? t : { ...t, [session.scenarioId]: next }; });
+        if (connection === 'ready') client.current?.queueInstructions(data.prepared.version, data.prepared.instructions,
+          { persistentInstructions: data.prepared.persistentInstructions ?? data.prepared.instructions, triggerTurnId: data.prepared.triggerTurnId });
+      },
+      onError: () => setPollError('Scores could not be refreshed. The last saved values are shown; reconnect after restoring the backend.'),
+      keepPolling: data => connection !== 'closed' || Boolean(data?.pending) || !recorder.current?.synced,
+    });
   }, [session?.id, connection]);
-  useEffect(() => { const timer = setTimeout(() => saveTrees(trees), 400); return () => clearTimeout(timer); }, [trees]);
+  useEffect(() => { const timer = setTimeout(() => setStorageWarning(saveTrees(trees) ? null : 'Browser storage is unavailable or full. Export JSON to keep this conversation tree.'), 400); return () => clearTimeout(timer); }, [trees]);
   const tree = trees[selected] ?? emptyTree(); const path = pathTo(tree, tree.headId);
   useEffect(() => { if (path.length) transcriptEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [trees]);
   const scenario = scenarios.find(s => s.id === selected); const sessionScenario = scenarios.find(s => s.id === session?.scenarioId) ?? scenario;
@@ -108,7 +118,8 @@ export function App() {
   const atFork = !busy && (childMap(tree).get(tree.headId)?.length ?? 0) > 0;
   const startLabel = !Object.keys(tree.nodes).length ? 'Start conversation' : atFork ? 'Start new branch' : 'Continue conversation';
   function start() {
-    setError(null); setRecording(null); setSelectedLine(null);
+    if (client.current && ['ready', 'connecting', 'closing'].includes(client.current.connectionState)) return;
+    setError(null); setRecording(null); setSelectedLine(null); setSession(null); setAdaptation(null); setLatency(null); setPollError(null); setAdaptationNotice(null);
     live.current = { scenarioId: selected, baseId: tree.headId };
     seeds.current = seedEvents(path);
     void client.current?.connect();
@@ -118,20 +129,31 @@ export function App() {
     if (client.current?.sendText(draft)) setDraft('');
   }
   function revert(id: string) { setTrees(t => ({ ...t, [selected]: revertTo(t[selected] ?? emptyTree(), id) })); setSelectedLine(null); }
-  function clearTree() { setTrees(t => { const { [selected]: _removed, ...rest } = t; return rest; }); setSelectedLine(null); }
+  function clearTree() { setTrees(t => { const { [selected]: _removed, ...rest } = t; return rest; }); setSelectedLine(null);
+    if (session?.scenarioId === selected) { setSession(null); setAdaptation(null); setLatency(null); setAdaptationNotice(null); setPollError(null); } }
   async function exportConversation() {
-    if (!session || !recorder.current) return;
+    if (!Object.keys(tree.nodes).length && !session) return;
     setExporting(true);
     try {
-      const done = await recorder.current.flush();
-      if (!done && !recorder.current.synced) throw new Error('Recording is still syncing. Please try exporting again in a moment.');
-      const data = await api<StoredSession>(`/api/sessions/${session.id}/export`);
-      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-      const link = document.createElement('a'); link.href = url; link.download = `parallel-worlds-${session.id}.json`; link.click(); URL.revokeObjectURL(url);
+      let data: StoredSession | null = null; let sessionWarning: string | undefined;
+      if (session?.scenarioId === selected && recorder.current) {
+        const done = await recorder.current.flush();
+        if (!done && !recorder.current.synced) sessionWarning = 'The latest server recording may not be synchronized.';
+        try { data = await api<StoredSession>(`/api/sessions/${session.id}/export`); }
+        catch { sessionWarning = 'Server session unavailable. The browser conversation tree and saved checkpoints are included.'; }
+      }
+      const exported = { ...(data ?? {}), treeExportVersion: 1, scenarioId: selected, conversationTree: tree,
+        activePathNodeIds: path.map(n => n.id), ...(sessionWarning && { exportWarning: sessionWarning }) };
+      const url = URL.createObjectURL(new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' }));
+      const link = document.createElement('a'); link.href = url; link.download = `parallel-worlds-${selected}-${session?.id ?? 'tree'}.json`; link.click(); URL.revokeObjectURL(url);
     } catch (e) { setError(e instanceof Error ? e.message : 'Export failed.'); }
     finally { setExporting(false); }
   }
-  const name = sessionScenario?.character.name ?? 'Alex';
+  const name = scenario?.character.name ?? 'Alex';
+  const shownSession = session?.scenarioId === selected ? session : null;
+  const lastLiveNode = shownSession ? [...orderedTurns(state.current)].reverse().find(t => tree.nodes[`${shownSession.id}/${t.itemId}`]) : undefined;
+  const liveHead = shownSession && lastLiveNode ? `${shownSession.id}/${lastLiveNode.itemId}` : live.current?.baseId ?? null;
+  const viewingSavedPath = !busy && (!shownSession || tree.headId !== liveHead);
   return <div className="app-shell">
     <aside className="sidebar">
       <a className="brand" href="/" aria-label="Parallel Worlds home"><span className="brand-symbol">◒</span><span>parallel<br/>worlds<span className="brand-period">.</span></span></a>
@@ -164,12 +186,12 @@ export function App() {
               <div className="mic-row"><button className={`mic-button ${mic ? 'mic-on' : ''}`} disabled={connection !== 'ready' || micBusy} aria-pressed={mic} onClick={async () => { setMicBusy(true); await client.current?.toggleMic(); setMicBusy(false); }}>{mic ? '● Microphone on' : '○ Enable microphone'}</button><meter aria-label="Microphone level" min={0} max={1} value={Math.min(1, level * 4)}/></div>
               <p className="control-note">{connection === 'ready' ? mic ? 'Speak naturally. Turn the microphone off to type instead.'
                 : path.length ? `${name} remembers the conversation so far. Type, or enable your microphone, to carry on.` : 'Type a message, or enable your microphone and say hello.'
-                : atFork ? `${name} remembers everything up to the branch point. Say something different this time.`
+                : atFork ? `The completed dialogue up to this point will be replayed. Say something different this time.`
                 : path.length ? 'Click one of your own lines to revert to that point.' : 'A live voice conversation, at your own pace.'}</p>
             </div>
           </section>
           <section className={`transcript-card ${Object.keys(tree.nodes).length ? 'has-tree' : ''}`} aria-labelledby="transcript-title">
-            <div className="transcript-header"><div><span className="eyebrow">IN THE MOMENT</span><h2 id="transcript-title">Your conversation</h2></div><button className="export-button" disabled={!session || exporting} onClick={() => void exportConversation()}>{exporting ? 'Saving…' : '↓ Export JSON'}</button></div>
+            <div className="transcript-header"><div><span className="eyebrow">IN THE MOMENT</span><h2 id="transcript-title">Your conversation</h2></div><button className="export-button" disabled={(!shownSession && !Object.keys(tree.nodes).length) || exporting} onClick={() => void exportConversation()}>{exporting ? 'Saving…' : '↓ Export JSON'}</button></div>
             <div className="live-indicator"><span className={`status-dot ${connection === 'ready' ? 'live' : ''}`}/>{connection === 'ready' ? activity === 'speaking' ? `${scenario?.character.name} is speaking` : activity === 'thinking' ? 'Considering your response' : mic ? 'Listening to you' : 'Microphone is off' : 'Your space to explore'}<span>{path.length ? `${path.length} lines` : 'USER SPEAKS FIRST'}</span></div>
             <div className="transcript-scroll" role="log" aria-label="Conversation transcript" aria-live="polite" aria-relevant="additions text">
               {!path.length && !atFork ? <div className="empty-transcript"><div className="sound-bars" aria-hidden="true">{[12, 24, 38, 57, 32, 65, 44, 26, 40, 19, 10].map((h,i) => <i key={i} style={{ height: h }}/>)}</div><h3>Good conversations<br/>begin with a little curiosity.</h3><p>Start your session, then type or turn on your microphone,<br/>and see what a simple hello can become.</p><span className="empty-line"/></div>
@@ -183,7 +205,7 @@ export function App() {
                 })}{atFork && <div className="branch-marker">⑂ Branch point. Click <b>Start new branch</b> and say something different. The earlier branch is kept in the tree below.</div>}</>}<div ref={transcriptEnd}/>
             </div>
             {Object.keys(tree.nodes).length > 0 && <TreeView tree={tree} characterName={scenario?.character.name ?? 'Alex'} selectedId={selectedLine} disabled={busy}
-              onSelect={setSelectedLine} onRevert={revert} onClear={clearTree}/>}
+              onSelect={setSelectedLine} onRevert={revert} onContinue={id => { setTrees(t => ({ ...t, [selected]: { ...t[selected], headId: id } })); setSelectedLine(null); }} onClear={clearTree}/>}
             <form className="composer" onSubmit={sendDraft}>
               <input aria-label="Type a message" value={draft} disabled={connection !== 'ready' || mic} onChange={e => setDraft(e.target.value)}
                 placeholder={connection !== 'ready' ? 'Start the conversation to type a message' : mic ? 'Microphone is on. Turn it off to type.' : `Type a message to ${sessionScenario?.character.name ?? 'Alex'}…`}/>
@@ -192,7 +214,10 @@ export function App() {
             <div className="transcript-footer"><span>{recording ?? (session ? 'Recorded in local server memory' : 'Transcripts appear here as you talk')}</span><span>◌</span></div>
           </section>
         </div>
-        <AdaptivePanel character={sessionScenario?.character.name ?? 'Alex'} data={adaptation} latency={latency} notice={adaptationNotice}/>
+        <AdaptivePanel character={name} data={shownSession && !viewingSavedPath ? adaptation : null} latency={shownSession && !viewingSavedPath ? latency : null}
+          mode={mode} connected={connection === 'ready'} preview={viewingSavedPath ? checkpointAt(path) : undefined}
+          restored={Boolean(shownSession?.branch?.restoredFrom)}
+          notice={viewingSavedPath ? 'Saved branch position. Start a conversation to restore its server checkpoint; if unavailable, the app will explicitly report a score reset.' : pollError ?? adaptationNotice}/>
         <footer className="workspace-footer"><span>Stay curious. There is no script.</span><span>POWERED BY BOSON HIGGS REALTIME</span></footer>
       </div>
     </main>

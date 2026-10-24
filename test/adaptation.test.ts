@@ -76,7 +76,7 @@ describe('configuration and providers', () => {
     const previous = { ...initialState(profile, 's', 1), trust: .10, comfort: .20, tone: 'guarded' as const };
     const output = await new MockAppraisalProvider().appraise({ ...input(), previous, utterance: 'I apologize. Can we reset?' }, new AbortController().signal);
     const next = transitionState(previous, output, turn(), 0, 3, .1);
-    expect(next).toMatchObject({ trust: .16, comfort: .24, tone: 'reserved', previousStateId: previous.id });
+    expect(next).toMatchObject({ trust: .10, comfort: .22, tone: 'guarded', previousStateId: previous.id });
   });
   it('uses strict structured output and validates mocked OpenAI responses', async () => {
     let body: any;

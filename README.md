@@ -8,9 +8,12 @@ interruptions, ordered transcripts, and JSON export.
 preferred), versioned character state,
 asynchronous instruction updates and a development panel. Static mode remains the
 default. See [Phase 2 configuration, live evidence and limitations](docs/phase2.md).
-Phase 2 validation: **115 automated tests pass**, including all 42 baseline tests;
+The [tone and realism baseline](docs/realism-implementation.md) adds grounded appraisal,
+mixed reactions, bounded concern memory and saved instruction context. Current validation:
+**184 automated tests pass**, including all 42 baseline tests;
 type checking and production build pass. Live Boson checks cover instruction updates,
-generated audio steering and the mock-appraisal integration. Human voice testing remains pending.
+generated audio steering, DeepSeek structured appraisal and static/adaptive text comparisons.
+Human voice testing and blinded realism ratings remain pending.
 
 ## Setup and launch
 
@@ -45,6 +48,11 @@ session, replays the path up to that point as text, and you say something differ
 old branch is kept, and the lower half of the conversation panel shows the whole tree with
 each branch point. Only your lines can be reverted: the character's reply follows from
 what you said. **Continue conversation** resumes the current path in a fresh session.
+Use **Use this branch** at an alternative endpoint to select an existing branch.
+Adaptive branches restore the character checkpoint at the selected point while the
+source sessions remain in backend memory. The selected dialogue history is supplied
+to both Boson and the appraiser. If a checkpoint is unavailable after a backend restart,
+the app reports a score reset instead of claiming full restoration.
 
 ```powershell
 pnpm test
@@ -137,9 +145,15 @@ allowlists fields instead of retaining arbitrary protocol payloads.
   stored only in this browser, per scenario. Each session's finalized turns hang under the
   node that was current when it started. A new session replays its path as text items
   (`conversation.item.create`): Boson skips audio content, so tone is not replayed, and an
-  interrupted reply is replayed with its full generated text, including words never heard.
+  interrupted, unfinished and failed turns are excluded from replay. Interrupted text
+  stays visible for inspection; exact heard-word reconstruction is not supported.
   A live test on 2026-10-23 confirmed that a fresh session seeded this way remembers the
-  replayed facts. The server export still covers one session, not the tree.
+  replayed facts. The UI's JSON export now includes the whole tree, saved score
+  checkpoints and active path, alongside the current server session when available.
+  It can export the browser tree even after that server session is gone. The server-only
+  export endpoint still covers one session plus its selected replay history.
+
+See [score updates, branch behavior and verification](docs/scores-and-branching.md).
 
 ## Probe and verification
 
@@ -163,8 +177,9 @@ and real local HTTP requests. Browser smoke checks cover selection and missing-k
 After a key was supplied, authenticated Boson probes successfully created sessions
 and completed text responses for Alex and Morgan. The resolved VAD threshold was 0.85.
 Phase 2 adds [live update, synthetic audio, and static/adaptive text evaluation](docs/phase2.md).
-**Physical microphone/speaker conversations, human interruptions, live external
-appraisal and improved emotional realism remain unverified.**
+Live external appraisal is covered by the [realism verification report](docs/realism-implementation.md).
+**Physical microphone/speaker conversations, human interruptions and improved emotional
+realism remain unverified.**
 See [docs/experiments.md](docs/experiments.md) for live acceptance and next experiments.
 
 ## Troubleshooting

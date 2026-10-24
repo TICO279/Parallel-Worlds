@@ -3,6 +3,7 @@ import { RingPlayer } from '../audio/playback';
 import { MicCapture } from '../audio/capture';
 import { describeClose, inputAudioAppend, truncateItem, WS_URL } from './protocol';
 import type { LatencyRecord } from '../../shared/characterState';
+import { SEED_PREFIX } from '../../shared/tree';
 export type ConnectionState = 'idle' | 'connecting' | 'ready' | 'closing' | 'closed';
 export type Activity = 'idle' | 'listening' | 'thinking' | 'speaking';
 export interface Player {
@@ -18,7 +19,7 @@ export interface ClientOptions {
   onMic(active: boolean): void; onLevel(level: number): void;
   /** History to replay after the session is acknowledged and before any microphone audio. */
   seed?: () => ProtocolEvent[];
-  onApplication?: (version: number, status: 'acknowledged' | 'failed' | 'deferred') => void;
+  onApplication?: (version: number, status: 'acknowledged' | 'failed' | 'deferred' | 'dispatched') => void;
   onLatency?: (metric: LatencyRecord) => void;
   socketFactory?: (url: string, protocols: string[]) => WebSocket;
   playerFactory?: (drained: () => void, failure: (m: string) => void, started: () => void) => Player;
@@ -31,12 +32,13 @@ export class HiggsClient {
   private blocked = new Set<string>(); private generating = false; private queued = false;
   private hadSession = false;
   private closing?: Promise<void>;
-  private pendingInstructions?: { version: number; instructions: string };
+  private pendingInstructions?: { version: number; instructions: string; persistentInstructions?: string; epoch?: number };
   private applying?: { version: number; instructions: string; timer: ReturnType<typeof setTimeout> };
   private appliedVersion = 0; private updateFailed = false; private userSpeaking = false; private awaitingResponse = false;
   private latestUserId?: string; private currentResponseId?: string; private typedAt?: number;
   private metrics = new Map<string, LatencyRecord>(); private responseTurns = new Map<string, string>();
   private inputMs = 0; private inputClock: { startMs: number; endMs: number; at: number }[] = [];
+  private userEpoch = 0; private guidanceOverlap = false;
   constructor(private options: ClientOptions) {}
   get connectionState() { return this.state; }
   private setState(s: ConnectionState) { this.state = s; this.options.onState(s); }
@@ -50,6 +52,7 @@ export class HiggsClient {
     this.appliedVersion = 0; this.updateFailed = false; this.userSpeaking = false; this.awaitingResponse = false;
     this.latestUserId = undefined; this.currentResponseId = undefined; this.typedAt = undefined; this.metrics.clear(); this.responseTurns.clear();
     this.inputMs = 0; this.inputClock = [];
+    this.userEpoch = 0; this.guidanceOverlap = false;
     this.controller = new AbortController();
     const alive = () => gen === this.gen;
     const drained = () => { if (alive()) { this.queued = false; this.options.onActivity(this.generating ? 'thinking' : this.mic?.active ? 'listening' : 'idle'); this.applyWhenIdle(); } };
@@ -132,6 +135,7 @@ export class HiggsClient {
           this.responseTurns.set(response.id, this.latestUserId);
           const metric = this.metric(this.latestUserId); metric.responseId = response.id;
           metric.responseCreatedAt = performance.now(); metric.appliedStateVersion = this.appliedVersion; this.emitMetric(metric);
+          if (this.applying || this.guidanceOverlap) { metric.guidanceUncertain = true; this.emitMetric(metric); }
         }
         break;
       }
@@ -156,13 +160,14 @@ export class HiggsClient {
           this.generating = false; if (!this.queued) this.options.onActivity(this.mic?.active ? 'listening' : 'idle'); this.applyWhenIdle();
         } break;
       case 'input_audio_buffer.speech_started':
+        this.newUserTurn();
         this.userSpeaking = true;
         if (typeof event.item_id === 'string') this.latestUserId = event.item_id;
         void this.bargeIn(gen); this.options.onActivity('listening'); break;
       case 'input_audio_buffer.speech_stopped':
         this.userSpeaking = false; this.awaitingResponse = true; this.options.onActivity('thinking');
         if (typeof event.item_id === 'string') {
-          const metric = this.metric(event.item_id); metric.speechStoppedAt = performance.now();
+          const metric = this.metric(event.item_id); metric.inputKind = 'audio'; metric.speechStoppedAt = performance.now();
           if (typeof event.audio_end_ms === 'number') {
             const endMs = event.audio_end_ms;
             const segment = this.inputClock.find(s => endMs >= s.startMs && endMs <= s.endMs);
@@ -174,9 +179,9 @@ export class HiggsClient {
       case 'conversation.item.added': {
         // The echo of a typed turn carries its item id; the send time stands in for the end of speech.
         const item = event.item as { id?: string; role?: string } | undefined;
-        if (this.typedAt !== undefined && item?.role === 'user' && item.id) {
+        if (this.typedAt !== undefined && item?.role === 'user' && item.id && !item.id.startsWith(SEED_PREFIX)) {
           this.latestUserId = item.id; const metric = this.metric(item.id);
-          metric.speechStoppedAt = this.typedAt; this.typedAt = undefined; this.emitMetric(metric);
+          metric.inputKind = 'text'; metric.speechStoppedAt = this.typedAt; this.typedAt = undefined; this.emitMetric(metric);
         }
         break;
       }
@@ -199,20 +204,28 @@ export class HiggsClient {
   }
   private emitMetric(metric: LatencyRecord) { this.options.onLatency?.({ ...metric }); }
   /** Async mode never suppresses VAD or requests an extra response. Latest state wins. */
-  queueInstructions(version: number, instructions: string) {
+  queueInstructions(version: number, instructions: string, context?: { persistentInstructions: string; triggerTurnId?: string }) {
     if (this.state !== 'ready' || this.updateFailed || version <= this.appliedVersion ||
       version <= (this.pendingInstructions?.version ?? 0) || version <= (this.applying?.version ?? 0)) return;
-    this.pendingInstructions = { version, instructions };
+    const current = context?.triggerTurnId === this.latestUserId && this.typedAt === undefined && !this.userSpeaking;
+    this.pendingInstructions = { version, instructions: context && !current ? context.persistentInstructions : instructions,
+      persistentInstructions: context?.persistentInstructions, epoch: this.userEpoch };
     if (this.generating || this.queued || this.userSpeaking || this.awaitingResponse || this.applying) this.options.onApplication?.(version, 'deferred');
     this.applyWhenIdle();
   }
   private applyWhenIdle() {
     if (this.state !== 'ready' || this.generating || this.queued || this.userSpeaking || this.awaitingResponse || this.applying || !this.pendingInstructions || this.updateFailed) return;
     const update = this.pendingInstructions; this.pendingInstructions = undefined;
+    if (update.epoch !== this.userEpoch && update.persistentInstructions) update.instructions = update.persistentInstructions;
     this.applying = { ...update, timer: setTimeout(() => {
       this.options.onApplication?.(update.version, 'failed'); this.applying = undefined; this.updateFailed = true;
     }, 5000) };
+    this.options.onApplication?.(update.version, 'dispatched');
     this.send({ type: 'session.update', event_id: `state-${this.gen}-${update.version}`, session: { instructions: update.instructions } });
+  }
+  private newUserTurn() {
+    this.userEpoch++; this.guidanceOverlap = Boolean(this.applying);
+    if (this.pendingInstructions?.persistentInstructions) this.pendingInstructions.instructions = this.pendingInstructions.persistentInstructions;
   }
   private playbackItem?: string;
   private async bargeIn(gen: number) {
@@ -227,7 +240,8 @@ export class HiggsClient {
   }
   /** A typed turn, only while the microphone is off. Like speaking over the character, it interrupts any reply still playing. */
   sendText(text: string): boolean {
-    if (this.state !== 'ready' || this.mic?.active || !text.trim()) return false;
+    if (this.state !== 'ready' || this.mic?.active || this.awaitingResponse || !text.trim()) return false;
+    this.newUserTurn();
     void this.bargeIn(this.gen);
     this.awaitingResponse = true; this.typedAt = performance.now();
     this.send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: text.trim() }] } });
