@@ -1,19 +1,20 @@
 import { metricNames, type AdaptationData, type DynamicCharacterState, type LatencyRecord } from '../shared/characterState';
-export function AdaptivePanel({ character, data, latency, notice, mode = 'static', connected = false, preview, restored = false }: {
+export function AdaptivePanel({ character, data, latency, notice, connected = false, preview, restored = false }: {
   character: string; data: AdaptationData | null; latency: LatencyRecord | null; notice: string | null;
-  mode?: 'static' | 'adaptive'; connected?: boolean; preview?: DynamicCharacterState; restored?: boolean;
+  connected?: boolean; preview?: DynamicCharacterState; restored?: boolean;
 }) {
-  const adaptive = data ? data.mode === 'adaptive' : mode === 'adaptive';
+  // Sessions saved before Static mode was removed can still be static.
+  const adaptive = data ? data.mode === 'adaptive' : true;
   const state = preview ?? (adaptive ? data?.states.at(-1) : undefined); const attempt = preview ? undefined : data?.attempts.at(-1);
   const prior = preview ? undefined : data?.states.at(-2);
   const acknowledged = preview ? undefined : data?.states.find(s => s.version === data.appliedVersion);
   const realism = state?.realism; const assessment = realism?.assessment;
   const duration = (end?: number, start?: number) => end !== undefined && start !== undefined && end >= start ? `${Math.round(end - start)} ms` : '—';
-  return <details className="adaptive-panel"><summary>Character scores · development view <span>{preview ? 'Saved branch checkpoint' : adaptive ? connected ? 'Adaptive · live' : data ? 'Adaptive · saved scores' : 'Adaptive · ready to start' : 'Static · scores paused'}</span></summary>
+  return <details className="adaptive-panel"><summary>Character scores · development view <span>{preview ? 'Saved branch checkpoint' : adaptive ? connected ? 'Live' : data ? 'Saved scores' : 'Ready to start' : 'Scores paused'}</span></summary>
     <div className="adaptive-body">
       <p><strong>{character}</strong> · {preview ? `Saved state v${preview.version}` : data?.mode === 'adaptive' ? `${data.provider} appraisal${data.model ? ` (${data.model})` : ''} · committed v${state?.version ?? 0} / Boson acknowledged v${data.appliedVersion}` : adaptive ? 'appraisal starts after connection' : 'appraisal disabled'}{data?.pending ? ' · appraising…' : ''}</p>
-      {!adaptive && !preview && <p role="status">Static mode does not appraise turns or update scores. Select Adaptive before starting a new conversation to enable score updates.</p>}
-      {adaptive && !state && <p role="status">Start an Adaptive conversation to load its scores. Scores update after finalized user turns are recorded and appraised.</p>}
+      {!adaptive && !preview && <p role="status">This older session did not appraise turns. Start a new conversation to see score updates.</p>}
+      {adaptive && !state && <p role="status">Start a conversation to load scores. Scores update after finalized user turns are recorded and appraised.</p>}
       {attempt?.status === 'failed' && <p role="alert" className="adaptation-warning">Appraisal failed: {attempt.error} Previous scores were retained.{attempt.error?.includes('timed out') ? ' Check APPRAISAL_TIMEOUT_MS; live providers may need a longer deadline.' : ''}</p>}
       {state && <p role="status">{preview ? 'Checkpoint preview. This is not a live reading.' : data?.pending ? 'Appraisal in progress. Showing the last committed scores.' : state.version === 0 ? restored ? 'Restored branch scores; waiting for the first new appraisal.' : 'Initial scores; no new successful appraisal in this session yet.' : `Scores last updated for user turn ${state.lastProcessedTurnId}.`}</p>}
       <p className="adaptive-disclaimer">Internal simulation variables. Acknowledged guidance does not prove emotional realism. Adaptive updates apply asynchronously to future responses; synchronous control is not enabled.</p>

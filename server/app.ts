@@ -38,7 +38,8 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
   app.post('/api/sessions', async (req, res) => {
     const scenario = scenarios.find(s => s.id === req.body?.scenarioId);
     if (!scenario) throw new ApiError(400, 'Choose a valid scenario.');
-    const mode = req.body?.mode ?? 'static';
+    // The app always uses adaptive; static stays available to scripts and tests.
+    const mode = req.body?.mode ?? 'adaptive';
     if (mode !== 'static' && mode !== 'adaptive') throw new ApiError(400, 'Choose static or adaptive mode.');
     const resumed = prepareBranch(req.body?.history, scenario, store, mode === 'adaptive');
     const credential = await mintCredential(options.apiKey, options.fetcher);

@@ -13,9 +13,9 @@ const data = (): AdaptationView => ({ mode: 'adaptive', timingMode: 'asynchronou
   prepared: { version: 1, instructions: 'Current guidance' } });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 describe('score display', () => {
-  it('explains static mode and does not present initial numbers as live scores', () => {
+  it('explains a non-appraised legacy session and does not present initial numbers as live scores', () => {
     const html = renderToStaticMarkup(<AdaptivePanel character="Alex" data={{ ...data(), mode: 'static' }} latency={null} notice={null}/>);
-    expect(html).toContain('Static · scores paused'); expect(html).toContain('Select Adaptive'); expect(html).not.toContain('<meter');
+    expect(html).toContain('Scores paused'); expect(html).toContain('did not appraise'); expect(html).not.toContain('<meter');
   });
   it('shows normalized scores, changes and separately acknowledged scores', () => {
     const html = renderToStaticMarkup(<AdaptivePanel character="Alex" data={data()} latency={null} notice={null} connected/>);

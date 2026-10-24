@@ -25,7 +25,6 @@ export function App() {
   const [configured, setConfigured] = useState<boolean | null>(null); const [exporting, setExporting] = useState(false);
   const [draft, setDraft] = useState('');
   const selectedRef = useRef(selected); selectedRef.current = selected;
-  const [mode, setMode] = useState<'static' | 'adaptive'>('static'); const modeRef = useRef(mode); modeRef.current = mode;
   const [adaptation, setAdaptation] = useState<AdaptationData | null>(null);
   const [latency, setLatency] = useState<LatencyRecord | null>(null); const [adaptationNotice, setAdaptationNotice] = useState<string | null>(null);
   const [pollError, setPollError] = useState<string | null>(null); const [storageWarning, setStorageWarning] = useState<string | null>(null);
@@ -42,7 +41,7 @@ export function App() {
       bootstrap: async signal => {
         const previous = recorder.current;
         if (previous && !previous.synced) { await previous.flush(); if (!previous.synced) throw new Error('The previous conversation is still recording. Wait for it to synchronize, then start the branch again.'); }
-        return api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: modeRef.current,
+        return api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: 'adaptive',
           history: branchHistory(pathTo(treesRef.current[selectedRef.current] ?? emptyTree(), live.current?.baseId ?? null)) }) });
       },
       seed: () => seeds.current,
@@ -159,7 +158,6 @@ export function App() {
       <a className="brand" href="/" aria-label="Parallel Worlds home"><span className="brand-symbol">◒</span><span>parallel<br/>worlds<span className="brand-period">.</span></span></a>
       <div className="sidebar-intro"><span className="eyebrow">THE CONVERSATION LAB</span><p>A different connection.<br/>A world of possibility.</p></div>
       <div className="scenario-label"><span className="eyebrow">CHOOSE YOUR SCENARIO</span><span>01 — 02</span></div>
-      <label className="mode-selector">Conversation mode<select value={mode} disabled={busy} onChange={e => setMode(e.target.value as 'static' | 'adaptive')}><option value="static">Static · original behavior</option><option value="adaptive">Adaptive · future responses</option></select></label>
       <nav aria-label="Scenarios" className="scenario-list">{scenarios.map((s, i) => <button key={s.id} disabled={busy} aria-pressed={selected === s.id}
         className={`scenario-option ${selected === s.id ? 'selected' : ''}`} onClick={() => { setSelected(s.id); setSelectedLine(null); }}>
         <span className="scenario-number">0{i + 1}</span><span><strong>{s.title}</strong><small>{i === 0 ? 'Connection & curiosity' : 'Clarity & confidence'}</small></span><span className="option-arrow">↗</span>
@@ -215,7 +213,7 @@ export function App() {
           </section>
         </div>
         <AdaptivePanel character={name} data={shownSession && !viewingSavedPath ? adaptation : null} latency={shownSession && !viewingSavedPath ? latency : null}
-          mode={mode} connected={connection === 'ready'} preview={viewingSavedPath ? checkpointAt(path) : undefined}
+          connected={connection === 'ready'} preview={viewingSavedPath ? checkpointAt(path) : undefined}
           restored={Boolean(shownSession?.branch?.restoredFrom)}
           notice={viewingSavedPath ? 'Saved branch position. Start a conversation to restore its server checkpoint; if unavailable, the app will explicitly report a score reset.' : pollError ?? adaptationNotice}/>
         <footer className="workspace-footer"><span>Stay curious. There is no script.</span><span>POWERED BY BOSON HIGGS REALTIME</span></footer>

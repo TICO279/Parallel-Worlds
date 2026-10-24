@@ -10,6 +10,7 @@ import { AppraisalProviderError, unpackAppraisalResult, type AppraisalTelemetry 
 import { branchTurns } from '../branching';
 import { transitionRealism, type EvidenceSource } from './realism';
 import { createHash } from 'node:crypto';
+import { log } from '../log';
 
 export function appraisalContext(turns: Turn[], beforeOrder: number, sessionId?: string) {
   return turns.filter(t => t.order < beforeOrder && t.transcriptFinal && t.text && t.status === 'complete')
@@ -110,6 +111,8 @@ export class AdaptationCoordinator {
           latencyMs: Math.round(performance.now() - started), at: Date.now(), appraisal, stateVersion: state.version, ...telemetry });
         this.store.setAdaptation(id, fresh);
         this.instructions(id);
+        const usage = telemetry.usage ? `, ${telemetry.usage.totalTokens} tokens` : '';
+        log('appraisal', `✓ ${this.provider.name} session ${id.slice(0, 8)} turn ${turn.itemId}: state v${previous.version} → v${state.version} (${Math.round(performance.now() - started)} ms${usage})`);
       } catch (error) {
         if (error instanceof AppraisalProviderError) telemetry = { ...telemetry, ...error.telemetry };
         const fresh = this.get(id); fresh.pending = false;
@@ -117,6 +120,7 @@ export class AdaptationCoordinator {
           latencyMs: Math.round(performance.now() - started), at: Date.now(), ...telemetry,
           error: controller.signal.aborted ? 'Appraisal timed out or was cancelled.' : error instanceof AppraisalProviderError ? error.message : 'Invalid, unavailable, or stale appraisal; previous state retained.' });
         this.store.setAdaptation(id, fresh);
+        log('appraisal', `✗ ${this.provider.name} session ${id.slice(0, 8)} turn ${turn.itemId}: ${fresh.attempts.at(-1)!.error}; kept state v${previous.version}`);
       } finally { clearTimeout(timer); if (this.controllers.get(id) === controller) this.controllers.delete(id); }
       session = this.store.get(id);
       if (['closed', 'error'].includes(session.status)) break;
