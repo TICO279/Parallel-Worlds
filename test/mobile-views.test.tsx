@@ -98,6 +98,13 @@ describe('preferred mobile frontend presentation',()=>{
 });
 
 describe('mobile communication comparison presentation',()=>{
+  it('shows a current evaluation error instead of an older comparison, and shows saving as loading',()=>{
+    const error='A saved path contains an unfinished exchange.';
+    const html=renderToStaticMarkup(<EvaluationContent state={state({comparison,error})}/>);
+    expect(html).toContain('role="alert"');expect(html).toContain(error);expect(html).not.toContain('mobile-result-paths');
+    const loading=renderToStaticMarkup(<EvaluationContent state={state({operating:'Preparing your comparison…'})}/>);
+    expect(loading).toContain('role="status"');expect(loading).toContain('Waiting for recording');expect(loading).not.toContain('Finish a completed exchange');
+  });
   it('renders the validated API scores, provisional coverage and transcript-grounded insight',()=>{
     const html=renderToStaticMarkup(<EvaluationContent state={state({comparison})}/>);
     expect(html).toContain('Original');expect(html).toContain('Alternative');expect(html).toContain('27');expect(html).toContain('75');

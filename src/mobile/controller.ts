@@ -29,6 +29,9 @@ interface Context {
   voice: VoiceClient; boot?: DurableBootstrap; recorder?: Recorder; local: ReturnType<typeof emptyConversation>;
   retired: boolean; terminal: boolean; cancelled: boolean; ready: Promise<boolean>; resolveReady: (ready: boolean) => void;
   adaptationFailures: number;
+  orderPending?:boolean;
+  terminalClosed?:boolean;
+  closingRecording?:Promise<void>;
   epoch: number;
 }
 const initialState = (): MobileState => ({ loading: true, profile: null, configured: null, qualification: null,
@@ -64,7 +67,8 @@ export class MobileController implements MobileActions {
   }
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
-  get needsUnloadWarning() { return Boolean(this.state.operating || live(this.state.connection) || [...this.contexts].some(c => c.recorder && !c.recorder.synced && !c.terminal)); }
+  get needsUnloadWarning() { return Boolean(this.state.operating || live(this.state.connection) || [...this.contexts].some(c =>
+    c.terminal ? !c.terminalClosed : c.orderPending || c.recorder && !c.recorder.synced)); }
   get canLeave() { return !this.needsUnloadWarning; }
   private key() { return this.deps.requestKey?.() ?? crypto.randomUUID(); }
   private active(epoch = this.epoch) { return !this.disposed && epoch === this.epoch; }
@@ -86,6 +90,8 @@ export class MobileController implements MobileActions {
         MVP_BRANCH_LIMIT: 'This conversation already has an alternative. Revisit either saved path or start a new conversation.',
         CONNECTION_RETRY_REQUIRED: 'The previous connection is uncertain. Tap the microphone again to replace it safely.',
         RESTORE_EXPIRED: 'The connection attempt expired. Tap the microphone to reconnect.',
+        INVALID_PREFIX: 'This saved path contains an unfinished or interrupted exchange and cannot be resumed exactly. Its history is preserved; start a new date to try again.',
+        INCOMPLETE_CONVERSATION: 'A saved path contains an unfinished or unheard exchange, so comparison is unavailable. Waiting while disconnected will not complete it. Your saved history is preserved.',
       };
       return messages[error.code] ?? error.message;
     }
@@ -192,7 +198,40 @@ export class MobileController implements MobileActions {
         warning:'Your saved alternative is ready. Tap the microphone to continue.',evaluation:null,comparison:null});return;
     }
     const ctx=this.current;
-    this.publish({overview,nodes:ctx&&!ctx.retired?this.displayNodes(ctx,nodes):nodes,suggestion:response.suggestion});
+    this.publish({overview,nodes:ctx&&!ctx.retired&&!ctx.terminal?this.displayNodes(ctx,nodes):nodes,suggestion:response.suggestion});
+  }
+
+  private queueSnapshot(ctx:Context) {
+    if(!ctx.boot||ctx.terminal)return;
+    const turns=orderedTurns(ctx.local),seed=ctx.boot.history.length?`pwseed_${ctx.boot.history.length-1}`:null;
+    const unresolved=turns.some((turn,index)=>turn.previousItemId&&turn.previousItemId!==turns[index-1]?.itemId&&!(index===0&&turn.previousItemId===seed));
+    const wasPending=ctx.orderPending;ctx.orderPending=unresolved;
+    if(unresolved){
+      if(this.currentContext(ctx))this.publish({warning:'Waiting for the conversation’s turn order before saving. Keep this page open.'});
+      return;
+    }
+    if(wasPending&&this.currentContext(ctx))this.publish({warning:null});
+    ctx.recorder?.snapshot(turns);
+  }
+  private rejectRecording(ctx:Context,code:string) {
+    if(ctx.terminal)return;
+    ctx.terminal=true;ctx.recorder?.dispose();
+    if(this.currentContext(ctx))this.publish({warning:`Recording stopped (${code}). Only saved turns are shown; unsaved speech was not added. Tap the microphone to reconnect from saved history.`});
+    void this.closeRejectedRecording(ctx).catch(()=>{
+      if(this.currentContext(ctx))this.publish({warning:`Recording stopped (${code}). The server connection could not be closed. Keep this page open and retry Pause or reconnect when the server is available.`});
+    });
+  }
+  private async closeRejectedRecording(ctx:Context) {
+    if(ctx.terminalClosed)return;
+    if(ctx.closingRecording)return ctx.closingRecording;
+    const work=(async()=>{
+      await ctx.voice.disconnect();
+      if(ctx.boot)await this.api.transport(`/api/sessions/${ctx.boot.session.id}`,{method:'PATCH',body:JSON.stringify({status:'closed'})});
+      ctx.terminalClosed=true;
+      if(this.currentContext(ctx))await this.refreshCore().catch(()=>{});
+    })();
+    ctx.closingRecording=work;
+    try{await work;}finally{if(ctx.closingRecording===work)ctx.closingRecording=undefined;}
   }
 
   private makeContext() {
@@ -202,7 +241,8 @@ export class MobileController implements MobileActions {
     const options: ClientOptions = {
       bootstrap: async signal => {
         for(const pending of [...this.contexts])if(pending!==ctx&&!pending.retired){
-          if(pending.recorder&&!pending.terminal)await pending.recorder.waitForSync(signal);
+          if(pending.terminal)await this.closeRejectedRecording(pending);
+          else if(pending.recorder)await pending.recorder.waitForSync(signal);
           pending.recorder?.dispose();pending.retired=true;this.contexts.delete(pending);
         }
         signal.throwIfAborted();
@@ -219,14 +259,13 @@ export class MobileController implements MobileActions {
           try{return await this.api.transport(url,options);}
           catch(error){
             if(error instanceof Phase3ApiError&&['STALE_SESSION','IMMUTABLE_TURN','INVALID_ORDER','REVISION_REUSED','HISTORY_REMOVED'].includes(error.code)){
-              ctx.terminal=true;ctx.recorder?.dispose();
-              if(this.currentContext(ctx))this.publish({warning:'Recording was rejected. Your saved path is intact; unsaved local speech is not part of it. Reconnect from server history.'});
-              void ctx.voice.disconnect();
+              this.rejectRecording(ctx,error.code);
             }throw error;
           }
         };
-        ctx.recorder=this.deps.recorderFactory?.(data.session.id,message=>{if(this.currentContext(ctx)&&!ctx.terminal)this.publish({warning:message});},request,`/api/v1/sessions/${data.session.id}/conversation`)
-          ??new SessionRecorder(data.session.id,message=>{if(this.currentContext(ctx)&&!ctx.terminal)this.publish({warning:message});},request,`/api/v1/sessions/${data.session.id}/conversation`);
+        const status=(message:string|null)=>{if(this.currentContext(ctx)&&!ctx.terminal&&(message||!ctx.orderPending))this.publish({warning:message});};
+        ctx.recorder=this.deps.recorderFactory?.(data.session.id,status,request,`/api/v1/sessions/${data.session.id}/conversation`)
+          ??new SessionRecorder(data.session.id,status,request,`/api/v1/sessions/${data.session.id}/conversation`);
         this.publish({nodes:this.displayNodes(ctx,[])});
       },
       seed:()=>replayEvents(ctx.boot?.history??[]),
@@ -256,11 +295,15 @@ export class MobileController implements MobileActions {
           .catch(()=>{if(this.currentContext(ctx))this.publish({warning:'A response timing measurement could not be saved.'});});
       },
       onEvent:event=>{
-        if(ctx.retired||isReplayEcho(event))return;
+        if(ctx.retired||ctx.terminal||isReplayEcho(event))return;
         if(event.type==='session.created')ctx.recorder?.status('active',(event.session as {id?:string})?.id);
         ctx.local=reduceTranscript(ctx.local,event,Date.now());
-        if(!ctx.terminal){if(finalized(event)&&ctx.boot?.restoration.status==='ready')ctx.recorder?.snapshot(orderedTurns(ctx.local));if(event.type==='client.closed')ctx.recorder?.status('closed');}
-        if(this.currentContext(ctx))this.publish({nodes:this.displayNodes(ctx,this.state.nodes)});
+        if(finalized(event)&&ctx.boot?.restoration.status==='ready')this.queueSnapshot(ctx);
+        if(event.type==='client.closed'){
+          if(ctx.orderPending)this.rejectRecording(ctx,'UNRESOLVED_ORDER');
+          else ctx.recorder?.status('closed');
+        }
+        if(!ctx.terminal&&this.currentContext(ctx))this.publish({nodes:this.displayNodes(ctx,this.state.nodes)});
       },
     };
     ctx.voice=this.deps.voiceFactory?.(options)??new HiggsClient(options);this.contexts.add(ctx);return ctx;
@@ -288,7 +331,10 @@ export class MobileController implements MobileActions {
   private async stopAndSynchronize() {
     const contexts=[...this.contexts].filter(c=>!c.retired);
     for(const ctx of contexts){ctx.cancelled=true;await ctx.voice.disconnect();}
-    for(const ctx of contexts)if(ctx.recorder&&!ctx.terminal)await ctx.recorder.waitForSync(this.requestController.signal);
+    for(const ctx of contexts){
+      if(ctx.terminal)await this.closeRejectedRecording(ctx);
+      else if(ctx.recorder)await ctx.recorder.waitForSync(this.requestController.signal);
+    }
     for(const ctx of contexts){ctx.recorder?.dispose();ctx.retired=true;this.contexts.delete(ctx);if(this.current===ctx)this.current=undefined;}
     if(this.active())this.publish({connection:'closed',activity:'idle',mic:false,level:0});
   }
@@ -302,7 +348,7 @@ export class MobileController implements MobileActions {
   }
   private requireBoundary() {
     if(this.state.connection==='connecting'||this.state.connection==='closing'||['thinking','speaking'].includes(this.state.activity)||
-      orderedTurns(this.current?.local??emptyConversation()).some(t=>t.status==='pending'||t.status==='streaming'))
+      !this.current?.terminal&&(this.current?.orderPending||orderedTurns(this.current?.local??emptyConversation()).some(t=>t.status==='pending'||t.status==='streaming')))
       throw new Error('Let the current exchange finish before rewinding or evaluating.');
   }
   private async settleAppraisal() {
@@ -351,6 +397,7 @@ export class MobileController implements MobileActions {
   }
   async evaluate() {
     await this.run('Preparing your comparison…',async()=>{
+      this.publish({evaluation:null,comparison:null});
       this.requireBoundary();await this.settleAppraisal();await this.stopAndSynchronize();await this.refreshCore();
       const overview=this.state.overview,branch=overview?.branches.find(b=>b.id===this.state.branchId);if(!overview||!branch)return;
       const signature=overview.branches.map(b=>`${b.id}:${b.revision}`).join('|');
@@ -409,7 +456,8 @@ export class MobileController implements MobileActions {
     const contexts=[...this.contexts];
     await Promise.allSettled(contexts.map(async ctx=>{
       ctx.cancelled=true;await ctx.voice.disconnect();
-      if(ctx.recorder&&!ctx.terminal)await ctx.recorder.waitForSync(new AbortController().signal).catch(()=>{});
+      if(ctx.terminal)await this.closeRejectedRecording(ctx).catch(()=>{});
+      else if(ctx.recorder)await ctx.recorder.waitForSync(new AbortController().signal).catch(()=>{});
       ctx.recorder?.dispose();ctx.retired=true;this.contexts.delete(ctx);
     }));
     if(this.current&&contexts.includes(this.current))this.current=undefined;

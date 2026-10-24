@@ -1,6 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SessionRecorder, type api } from '../src/recording';
 describe('recording queue', () => {
+  it('drains a newer snapshot before closing the server session', async () => {
+    const calls:string[]=[];let first!:()=>void,second!:()=>void;let writes=0,closed=false;
+    const request=vi.fn(async(_url:string,init:RequestInit)=>{
+      const body=JSON.parse(String(init.body));calls.push(init.method==='PUT'?`put:${body.revision}`:body.status);
+      if(init.method==='PATCH'){closed=true;return{};}
+      if(closed)throw new Error('STALE_SESSION');
+      if(++writes===1)await new Promise<void>(done=>{first=done;});
+      else if(writes===2)await new Promise<void>(done=>{second=done;});return{};
+    });
+    const recorder=new SessionRecorder('session',vi.fn(),request as typeof api);
+    try{
+      recorder.snapshot([]);recorder.snapshot([]);recorder.status('closed');first();
+      await vi.waitFor(()=>expect(second).toBeTypeOf('function'));
+      recorder.snapshot([]);second();await vi.waitFor(()=>expect(calls).toHaveLength(4));
+      expect(calls).toEqual(['put:1','put:2','put:3','closed']);await recorder.waitForSync(new AbortController().signal,500);
+    }finally{recorder.dispose();}
+  });
   it('cancels directed waiting without abandoning the underlying recording write', async () => {
     vi.useFakeTimers();let finish!:()=>void;
     const request=vi.fn(()=>new Promise(resolve=>{finish=()=>resolve({});}));

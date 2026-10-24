@@ -18,18 +18,21 @@ export class SessionRecorder {
     if (this.running || this.disposed) return false;
     this.running = true; clearTimeout(this.timer);
     try {
-      while (this.pending || this.lifecycle) {
+      while (!this.disposed && (this.pending || this.lifecycle)) {
         const snapshot = this.pending; const lifecycle = this.lifecycle;
         if (snapshot) {
           await this.request(this.conversationUrl, { method: 'PUT', body: JSON.stringify(snapshot) });
           if (this.pending === snapshot) this.pending = undefined;
         }
-        if (lifecycle) {
+        // A newer snapshot may arrive while the captured one is in flight. Closing
+        // first would fence that newer snapshot out of a durable branch forever.
+        if (lifecycle && this.lifecycle === lifecycle &&
+          (!['closed','error'].includes(lifecycle.status) || !this.pending)) {
           await this.request(`/api/sessions/${this.id}`, { method: 'PATCH', body: JSON.stringify(lifecycle) });
           if (this.lifecycle === lifecycle) this.lifecycle = undefined;
         }
       }
-      this.onStatus(null); return true;
+      if (!this.disposed) this.onStatus(null); return !this.disposed;
     } catch {
       this.onStatus('Recording is waiting for the local server. Retrying; keep this tab open.');
       if (!this.disposed) this.timer = setTimeout(() => void this.flush(), 2000);

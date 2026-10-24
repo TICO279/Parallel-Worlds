@@ -14,11 +14,13 @@ See the [integration and verification guide](docs/mobile-frontend-integration.md
 For testing on an iPhone over the same Wi-Fi, use the
 [Safari/HTTPS phone setup](docs/iphone-testing.md) and `pnpm phone`; no App Store
 build is needed. The phone setup keeps the backend on localhost.
-**318 tests pass**, including the private iPhone gateway checks, with type checking
+**322 tests pass**, including the private iPhone gateway and recording-race checks, with type checking
 and production build passing. The voice journey
 is covered with synthetic events against the real local API/SQLite; live Boson setup
 reached ready, but microphone capture failed in this browser. Actual spoken conversation
 and physical-device audio verification remain pending.
+See [recording rejection and evaluation fixes](docs/mobile-recording-fixes.md) when
+updating another copy of the mobile app.
 
 **Phase 3 hackathon MVP:** durable SQLite conversations, an original
 and one independent alternative, gated context restoration, asynchronous DeepSeek/mock
