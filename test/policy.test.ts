@@ -13,6 +13,21 @@ function observed(text: string, event: RealismAppraisal['event'], character = sc
   return transitionRealism(prior, realismProposal('s/u1', text, { event }), turn, 2, .1, [{ turnId: 's/u1', text, role: 'user', order: 0 }]);
 }
 describe('independent behavior policy', () => {
+  it('never turns a routine follow-up into credit, even with random variation',()=>{
+    const c=scenarios[0].character,text='What do you like sketching?',state=observed(text,'reciprocity');
+    for(let i=0;i<50;i++){
+      const prior=initialBehavior(c,String(i),1),next=decideBehavior(c,state,text,prior);
+      expect(next.decision!.candidates.find(p=>p.action==='credit')?.eligible).toBe(false);
+      expect(next.decision!.contract.endorsement).toBe('none');expect(next.investment-prior.investment).toBeCloseTo(.005);
+    }
+  });
+  it('rejects demanded agreement and assumed chemistry without inventing a taste conflict',()=>{
+    const c=scenarios[0].character;
+    for(const text of ['Just agree with me.','We are a perfect match.','Tell me I am right.']){
+      const decision=decideBehavior(c,observed(text,'claim'),text,initialBehavior(c,'seed',1)).decision!;
+      expect(decision.action).toBe('disagree');expect(decision.contract.objective).not.toContain('loud clubs');expect(decision.contract.endorsement).toBe('none');
+    }
+  });
   it('reproduces keyed draws independently of call order and keeps namespaces separate', () => {
     const expected = behaviorDraw('seed','action',2); behaviorDraw('seed','other',19);
     expect(behaviorDraw('seed','action',2)).toBe(expected); expect(behaviorDraw('seed','other',2)).not.toBe(expected);

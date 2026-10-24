@@ -53,6 +53,14 @@ describe('grounded version-2 appraisal', () => {
   });
 });
 describe('proportionate state and repair policy', () => {
+  it('blocks optimistic model rewards for ordinary participation while keeping curiosity and grounded credit',async()=>{
+    for(const event of ['neutral','interest','claim','disagreement','boundary_setting','reciprocity'] as const){
+      const h=story(),before=h.state;
+      await h.say('What do you like reading?',{event,deltas:{comfort:.1,trust:.1,curiosity:.03,engagement:.1}});
+      expect(h.state.comfort).toBe(before.comfort);expect(h.state.trust).toBe(before.trust);expect(h.state.engagement).toBe(before.engagement);
+      expect(h.state.curiosity).toBeCloseTo(before.curiosity+.03);expect(h.state.realism!.policy.join(' ')).toContain('participation');
+    }
+  });
   it('keeps neutral small talk neutral and stops repeated positive wording from compounding', async () => {
     const neutral = story(); const before = neutral.state;
     for (let i = 0; i < 10; i++) await neutral.say('Hello. The weather is mild today.');
@@ -141,7 +149,7 @@ describe('actor compilation, audit and configuration', () => {
     store.snapshot(s.id, 1, [{ itemId: 'u1', role: 'user', text: 'I enjoy pottery.', order: 0, status: 'complete', transcriptFinal: true, startedAt: 1, updatedAt: 1 }]); await c.enqueue(s.id);
     const prepared = c.instructions(s.id); const record = store.get(s.id).adaptation!.instructionHistory!.at(-1)!;
     expect(record.instructions).toBe(prepared.instructions); expect(record.contextHash).toBe(createHash('sha256').update(record.instructions).digest('hex'));
-    expect(c.current(s.id).realism).toMatchObject({ schemaVersion: 2, profileVersion: 'realism-2', compilerVersion: 'agency-1' });
+    expect(c.current(s.id).realism).toMatchObject({ schemaVersion: 2, profileVersion: 'realism-2', compilerVersion: 'restraint-2' });
   });
   it('keeps state and memory unchanged on invalid asynchronous output', async () => {
     const store = new ConversationStore(); const c = new AdaptationCoordinator(store, scenarios, { provider: 'mock', model: '', timeoutMs: 1500, maxDelta: .1 }, {

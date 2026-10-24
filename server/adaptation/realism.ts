@@ -25,7 +25,13 @@ export function transitionRealism(previous: DynamicCharacterState, raw: unknown,
   const pressure = boundaryPressure(turn.text!, appraisal.event, memory.some(n => n.category === 'boundary_pressure' && n.status === 'active'));
   const apology = appraisal.event === 'apology' || /\b(sorry|apologi[sz]e)\b/i.test(turn.text!);
   const activePressure = memory.filter(n => n.category === 'boundary_pressure' && n.status === 'active');
-  const behavioralTrust = ['evidence', 'accountability', 'reciprocity', 'respectful_action'].includes(appraisal.event);
+  // Participation is not approval. Enforce this even when a live model proposes
+  // an optimistic delta after an ordinary question, hobby or unsupported claim.
+  if (['neutral','interest','claim','disagreement','boundary_setting','reciprocity'].includes(appraisal.event)) {
+    for(const name of ['comfort','engagement'] as const)deltas[name]=Math.min(0,deltas[name]);
+    policy.push('Ordinary participation does not automatically increase comfort or engagement; curiosity remains separate from approval.');
+  }
+  const behavioralTrust = ['evidence', 'accountability', 'respectful_action'].includes(appraisal.event);
   if (deltas.trust > 0 && (!behavioralTrust || apology || pressure || activePressure.length > 0 || appraisal.uncertainty.level === 'high')) {
     deltas.trust = 0; policy.push('Trust requires behavioral evidence; claims, apologies, high uncertainty and unresolved pressure do not restore it.');
   }
@@ -85,5 +91,5 @@ export function transitionRealism(previous: DynamicCharacterState, raw: unknown,
   const { memoryOperations: _operations, deltas: _deltas, ...assessment } = appraisal;
   return Object.freeze(characterStateSchema.parse({ ...next, realism: { schemaVersion: 2, memory, assessment,
     policy: [...new Set(policy)].slice(0, 12), evictedMemoryIds: evicted, briefTurnId: currentId,
-    profileVersion, compilerVersion: 'agency-1' } }));
+    profileVersion, compilerVersion: 'restraint-2' } }));
 }

@@ -67,7 +67,7 @@ export class AdaptationCoordinator {
     const data = this.get(id);
     if (!data.instructionHistory?.some(r => r.version === state.version && r.contextHash === contextHash)) {
       data.instructionHistory ??= []; data.instructionHistory.push({ version: state.version, contextHash, instructions,
-        persistentInstructions: instructions, turnInstructions, triggerTurnId: state.lastProcessedTurnId ?? undefined, at: Date.now(), compilerVersion: 'agency-1' });
+        persistentInstructions: instructions, turnInstructions, triggerTurnId: state.lastProcessedTurnId ?? undefined, at: Date.now(), compilerVersion: 'restraint-2' });
       this.store.setAdaptation(id, data);
     }
     return { version: state.version, instructions, persistentInstructions: instructions, turnInstructions, contextHash, triggerTurnId: state.lastProcessedTurnId ?? undefined };

@@ -72,6 +72,12 @@ describe('configuration and providers', () => {
     const morgan = await provider.appraise({ ...input(), character: scenarios[1].character, utterance: 'That was a funny joke.' }, signal);
     expect(alex.tone).toBe('playful'); expect(morgan.tone).toBe('focused'); expect(alex.deltas.comfort).toBeGreaterThan(morgan.deltas.comfort);
   });
+  it('keeps an ordinary interest or follow-up from producing automatic trust or substantial investment',async()=>{
+    const provider=new MockAppraisalProvider(),signal=new AbortController().signal;
+    const interest=await provider.appraise({...input(),utterance:'I enjoy reading.'},signal);
+    const followup=await provider.appraise({...input(),utterance:'What do you sketch?',context:[{role:'assistant',text:'I sketch windows.'}]},signal);
+    expect(interest.deltas).toMatchObject({comfort:0,trust:0,engagement:0});expect(followup.deltas.trust).toBe(0);expect(followup.deltas.engagement).toBeLessThanOrEqual(.005);
+  });
   it('repairs an apology gradually from a guarded state without resetting its history', async () => {
     const previous = { ...initialState(profile, 's', 1), trust: .10, comfort: .20, tone: 'guarded' as const };
     const output = await new MockAppraisalProvider().appraise({ ...input(), previous, utterance: 'I apologize. Can we reset?' }, new AbortController().signal);

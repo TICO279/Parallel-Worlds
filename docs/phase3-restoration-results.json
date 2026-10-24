@@ -2,7 +2,7 @@
   "qualification": {
     "protocolVersion": "restore-1",
     "contextQualified": true,
-    "testedAt": "2026-10-24T16:31:58.517Z",
+    "testedAt": "2026-10-24T18:42:49.629Z",
     "preForkRecall": true,
     "postForkAbsent": true,
     "noDuplicateQuestion": true,
@@ -13,7 +13,7 @@
     }
   },
   "mode": "live Boson generated audio, mock appraisal; no physical microphone",
-  "durationMs": 15046,
+  "durationMs": 16672,
   "timeBoxSeconds": 180,
   "previousAttempts": [
     {
@@ -133,6 +133,40 @@
           "prefixContainsPostFork": false
         }
       ]
+    },
+    {
+      "testedAt": "2026-10-24T16:31:58.517Z",
+      "durationMs": 15046,
+      "rows": [
+        {
+          "trial": 0,
+          "modality": "generated audio",
+          "audioReceived": true,
+          "firstQuestion": "Nice to meet you, Jordan. Maple0 is a great name. I usually spend weekends sketching or visiting quiet bookshops.",
+          "originalReply": "I’d pick somewhere I can hear you. Crowded clubs aren’t really my thing.",
+          "alternativeReply": "Your dog's name is Maple0, and your hobby is pottery. You haven't told me a secret code or where you live.",
+          "preForkRecall": true,
+          "postForkAbsent": true,
+          "noDuplicateQuestion": true,
+          "noUnsolicitedResponse": true,
+          "originalUnchanged": true,
+          "prefixContainsPostFork": false
+        },
+        {
+          "trial": 1,
+          "modality": "generated audio",
+          "audioReceived": true,
+          "firstQuestion": "I'm Alex. I usually spend weekends sketching in quiet spots or browsing bookshops.",
+          "originalReply": "I'd pick somewhere quiet where I can actually hear you. Crowded clubs aren't really my thing.",
+          "alternativeReply": "Your dog's name is Maple1, and your hobby is pottery. I don't know any secret code or where you live.",
+          "preForkRecall": true,
+          "postForkAbsent": true,
+          "noDuplicateQuestion": true,
+          "noUnsolicitedResponse": true,
+          "originalUnchanged": true,
+          "prefixContainsPostFork": false
+        }
+      ]
     }
   ],
   "rows": [
@@ -140,9 +174,9 @@
       "trial": 0,
       "modality": "generated audio",
       "audioReceived": true,
-      "firstQuestion": "Nice to meet you, Jordan. Maple0 is a great name. I usually spend weekends sketching or visiting quiet bookshops.",
-      "originalReply": "I’d pick somewhere I can hear you. Crowded clubs aren’t really my thing.",
-      "alternativeReply": "Your dog's name is Maple0, and your hobby is pottery. You haven't told me a secret code or where you live.",
+      "firstQuestion": "Hi Jordan. Maple0 is a fun name. I usually spend weekends sketching or reading in quiet places.",
+      "originalReply": "I don't really enjoy crowded clubs. I'd prefer somewhere quiet where I can actually hear you.",
+      "alternativeReply": "You mentioned your dog's name is Maple0 and your hobby is pottery. I don't know your secret code or where you live.",
       "preForkRecall": true,
       "postForkAbsent": true,
       "noDuplicateQuestion": true,
@@ -154,9 +188,9 @@
       "trial": 1,
       "modality": "generated audio",
       "audioReceived": true,
-      "firstQuestion": "I'm Alex. I usually spend weekends sketching in quiet spots or browsing bookshops.",
-      "originalReply": "I'd pick somewhere quiet where I can actually hear you. Crowded clubs aren't really my thing.",
-      "alternativeReply": "Your dog's name is Maple1, and your hobby is pottery. I don't know any secret code or where you live.",
+      "firstQuestion": "Nice to meet you, Jordan. Maple1 is a memorable name. I usually spend weekends sketching in quiet spots or browsing bookshops.",
+      "originalReply": "I don't really enjoy crowded clubs. I'd prefer somewhere quiet where I can actually hear you.",
+      "alternativeReply": "Your dog's name is Maple1, and your hobby is pottery. I don't know your secret code or where you live.",
       "preForkRecall": true,
       "postForkAbsent": true,
       "noDuplicateQuestion": true,
@@ -164,5 +198,6 @@
       "originalUnchanged": true,
       "prefixContainsPostFork": false
     }
-  ]
+  ],
+  "instructionCompilerVersion": "restraint-2"
 }
