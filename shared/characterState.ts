@@ -37,6 +37,15 @@ export const realismStateSchema = z.strictObject({ schemaVersion: z.literal(2), 
   assessment: realismAppraisalSchema.omit({ memoryOperations: true, deltas: true }),
   policy: z.array(z.string().max(200)).max(12), evictedMemoryIds: z.array(z.string()).max(32),
   briefTurnId: z.string(), profileVersion: z.string(), compilerVersion: z.string() });
+/** Slow relationship indicators (0–1) plus fast mood: tension (0–1) and warmth (−1…1). */
+export const relationshipNames = ['comfort', 'trust', 'interest', 'respect', 'closeness'] as const;
+export type RelationshipName = typeof relationshipNames[number];
+export const relationshipSchema = z.strictObject({
+  comfort: score, trust: score, interest: score, respect: score, closeness: score,
+  tension: score, warmth: z.number().finite().min(-1).max(1),
+  lastShift: z.strictObject({ event: z.string().max(40), turnId: z.string().max(450), major: z.boolean() }).optional(),
+});
+export type Relationship = z.infer<typeof relationshipSchema>;
 export const characterStateSchema = z.strictObject({
   id: z.string(), characterId: z.string(), sessionId: z.string(), branchId: z.literal('main'),
   version: z.number().int().nonnegative(), previousStateId: z.string().nullable(),
@@ -44,6 +53,7 @@ export const characterStateSchema = z.strictObject({
   comfort: score, trust: score, curiosity: score, engagement: score,
   tone: toneSchema, goal: z.string(), guidance: z.string(),
   realism: realismStateSchema.optional(),
+  relationship: relationshipSchema.optional(),
 });
 export type DynamicCharacterState = z.infer<typeof characterStateSchema>;
 export const tokenUsageSchema = z.strictObject({
@@ -67,10 +77,26 @@ export interface LatencyRecord {
   endToEndMs?: number; firstAudioMs?: number; transcriptDelayMs?: number; appliedStateVersion: number;
   guidanceUncertain?: boolean;
 }
+/** Usage reported by the decision model (Jev): input tokens are billed, output is free. */
+export interface DecisionUsage { inputTokens?: number; outputTokens?: number; cost?: number; }
+/** One Jev judgment of a user line: major-shift probability, event, and the indicator nudges it implied. */
+export interface JudgmentRecord {
+  turnId: string; provider: string; model?: string; majorShift: number; major: boolean; event: string;
+  nudges: Record<RelationshipName, number>; behavior: number; latencyMs: number; at: number;
+  appraised?: 'committed' | 'failed'; usage?: DecisionUsage; error?: string;
+}
+/** The voice chosen for one reply: an emotion per sentence, then the TTS request. */
+export interface VoiceRecord {
+  replyItemId: string; provider: string; model?: string; sentences: { text: string; emotion: string; probability: number }[];
+  decisionMs: number; ttsFirstAudioMs?: number; at: number; usage?: DecisionUsage; error?: string;
+}
+/** What the browser needs after a judgment. Major shifts carry the instructions to apply before the reply. */
+export interface JudgeResult { major: boolean; majorShift: number; event: string; instructions?: string; stateVersion: number; }
 export interface AdaptationData {
   mode: 'static' | 'adaptive'; timingMode: 'asynchronous'; provider: string; model?: string;
   appraisalTimeoutMs: number; maxStateDelta: number;
   states: DynamicCharacterState[]; attempts: AppraisalAttempt[]; applications: ApplicationRecord[];
   latencies: LatencyRecord[]; appliedVersion: number; pending: boolean;
   memoryCapacity?: number; maxOutputTokens?: number; instructionHistory?: InstructionRecord[];
+  decision?: { provider: string; model?: string; majorThreshold: number }; judgments?: JudgmentRecord[]; voices?: VoiceRecord[];
 }

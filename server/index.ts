@@ -11,4 +11,10 @@ app.listen(3000, '127.0.0.1', () => {
   if (!apiKey?.trim()) console.log('Add BOSON_API_KEY to .env and restart to enable live sessions.');
   log('appraisal', adaptation.provider === 'mock' ? 'provider=mock (keyword rules, no network). Set APPRAISAL_PROVIDER in .env to use a model.'
     : `provider=${adaptation.provider} model=${adaptation.model} key=configured timeout=${adaptation.timeoutMs} ms. Only Adaptive mode sessions call it.`);
+  const d = adaptation.decision; const t = adaptation.speech;
+  log('decision', d?.provider === 'mock' ? 'provider=mock (keyword rules, no network). Set DEEPSEEK_API_KEY to use DeepSeek for the quick check and voice emotions.'
+    : `quick check + voice emotions: provider=${d?.provider} model=${d?.model} url=${d?.url} major-shift threshold=${d?.majorThreshold} timeout=${d?.timeoutMs} ms`);
+  log('appraisal', adaptation.appraisalTrigger === 'major_shift' ? 'full appraisal runs only on major shifts flagged by the decision model'
+    : 'full appraisal runs on every user line (APPRAISAL_TRIGGER=every_turn)');
+  log('tts', `Higgs replies as text; Higgs TTS 3 speaks them: model=${t?.model} voice=${t?.voice}`);
 });

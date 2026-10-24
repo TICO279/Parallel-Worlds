@@ -6,7 +6,7 @@ import { attachStates, branchHistory, checkpointAt, childMap, emptyTree, isSeedE
 import { HiggsClient, type Activity, type ConnectionState } from './realtime/HiggsClient';
 import { api, SessionRecorder } from './recording';
 import { AdaptivePanel } from './AdaptivePanel';
-import type { AdaptationData, LatencyRecord } from '../shared/characterState';
+import type { AdaptationData, JudgeResult, LatencyRecord } from '../shared/characterState';
 import { loadTrees, saveTrees } from './treeStorage';
 import { TreeView } from './TreeView';
 import { pollAdaptation } from './adaptationPolling';
@@ -46,6 +46,27 @@ export function App() {
           history: branchHistory(pathTo(treesRef.current[selectedRef.current] ?? emptyTree(), live.current?.baseId ?? null)) }) });
       },
       seed: () => seeds.current,
+      pipeline: {
+        judge: async (turnId, signal) => {
+          const id = sessionIdRef.current; const r = recorder.current; if (!id || !r) throw new Error('No session.');
+          // The server judges the recorded line, so the transcript must reach it first.
+          for (let attempt = 0; ; attempt++) {
+            await synced(r, signal);
+            try { return await api<JudgeResult>(`/api/sessions/${id}/judge`, { method: 'POST', signal, body: JSON.stringify({ turnId }) }); }
+            catch (e) { if (signal.aborted || attempt >= 8) throw e; await sleep(150, signal); }
+          }
+        },
+        speak: async ({ itemId, text, userItemId, discardedDraft }, signal) => {
+          const id = sessionIdRef.current; if (!id) throw new Error('No session.');
+          const response = await fetch(`/api/sessions/${id}/speech`, { method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyItemId: itemId, text, ...(userItemId && { userItemId }), ...(discardedDraft !== undefined && { discardedDraft }) }) });
+          if (!response.ok || !response.body) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(typeof data.error === 'string' ? data.error : 'Text-to-speech failed.');
+          }
+          return chunks(response.body);
+        },
+      },
       onBootstrap: data => {
         state.current = emptyConversation(); setSession(data.session);
         if (live.current) live.current.sessionId = data.session.id;
@@ -81,7 +102,7 @@ export function App() {
           setTrees(t => ({ ...t, [scenarioId]: syncSession(t[scenarioId] ?? emptyTree(), baseId, sessionId, turns) }));
         }
         if (e.type.endsWith('.completed') || e.type.endsWith('.failed') || e.type.endsWith('.done') ||
-          ['client.interrupted', 'client.closed', 'input_audio_buffer.committed', 'conversation.item.added'].includes(e.type))
+          ['client.interrupted', 'client.closed', 'client.discarded', 'client.reply', 'input_audio_buffer.committed', 'conversation.item.added'].includes(e.type))
           recorder.current?.snapshot(orderedTurns(state.current));
         if (e.type === 'client.closed') recorder.current?.status('closed');
       },
@@ -236,4 +257,16 @@ export function App() {
       </div>
     </main>
   </div>;
+}
+const sleep = (ms: number, signal: AbortSignal) => new Promise<void>((resolve, reject) => {
+  const timer = setTimeout(resolve, ms); signal.addEventListener('abort', () => { clearTimeout(timer); reject(signal.reason); }, { once: true });
+});
+async function synced(recorder: SessionRecorder, signal: AbortSignal) {
+  while (!recorder.synced) { signal.throwIfAborted(); await recorder.flush(); if (!recorder.synced) await sleep(100, signal); }
+}
+/** ReadableStream → async iterable without relying on browser support for `for await` over streams. */
+async function* chunks(body: ReadableStream<Uint8Array>) {
+  const reader = body.getReader();
+  try { for (;;) { const { done, value } = await reader.read(); if (done) return; if (value) yield value; } }
+  finally { reader.releaseLock(); }
 }

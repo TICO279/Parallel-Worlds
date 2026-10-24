@@ -1,8 +1,9 @@
 import type { ProtocolEvent, SessionSpec } from '../shared/domain';
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
-export function buildHiggsConfig(spec: SessionSpec): ProtocolEvent {
+/** `text`: Higgs writes the reply as text and Higgs TTS 3 speaks it (the app's mode); otherwise Higgs speaks it. */
+export function buildHiggsConfig(spec: SessionSpec, options: { text?: boolean } = {}): ProtocolEvent {
   return { type: 'session.update', session: {
-    model: 'higgs-realtime', instructions: spec.instructions, output_modalities: ['audio'],
+    model: 'higgs-realtime', instructions: spec.instructions, output_modalities: [options.text ? 'text' : 'audio'],
     audio: {
       input: { format: { type: 'audio/pcm', rate: 24000 }, turn_detection: { type: 'server_vad' },
         transcription: { model: 'higgs-stt-3.1', language: spec.language } },

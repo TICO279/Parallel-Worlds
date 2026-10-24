@@ -7,3 +7,6 @@ dist/
 captures/
 *.tsbuildinfo
 coverage/
+
+# Local design notes, diagrams and audio samples
+design/

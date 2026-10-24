@@ -7,6 +7,9 @@ import { ConversationStore } from './store';
 import { AdaptationCoordinator } from './adaptation/coordinator';
 import { adaptationConfig, type AdaptationConfig } from './adaptation/config';
 import type { AppraisalProvider } from './adaptation/providers';
+import type { Decider } from './adaptation/decisions';
+import { openSpeech } from './speech';
+import { log } from './log';
 import { z } from 'zod';
 import { prepareBranch } from './branching';
 const metricPayload = z.strictObject({ turnId: z.string().max(200), responseId: z.string().max(200).optional(),
@@ -15,13 +18,18 @@ const metricPayload = z.strictObject({ turnId: z.string().max(200), responseId: 
   speechEndedAt: z.number().finite().optional(), speechStoppedAt: z.number().finite().optional(), transcriptFinalAt: z.number().finite().optional(),
   responseCreatedAt: z.number().finite().optional(), firstAudioAt: z.number().finite().optional(), playbackStartedAt: z.number().finite().optional(),
   appliedStateVersion: z.number().int().nonnegative() });
+const judgePayload = z.strictObject({ turnId: z.string().min(1).max(200) });
+const speechPayload = z.strictObject({ replyItemId: z.string().min(1).max(200), text: z.string().trim().min(1).max(8000),
+  userItemId: z.string().max(200).optional(), discardedDraft: z.string().max(8000).optional() });
 // Explicit local frontend origins, including the supported alternate Vite port.
 // Do not accept arbitrary loopback ports or hosts that merely start with localhost.
 const localOrigins = new Set([3000, 5173, 5174].flatMap(port =>
   [`http://127.0.0.1:${port}`, `http://localhost:${port}`]));
-export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider } = {}) {
+export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider; decider?: Decider; speechFetcher?: typeof fetch } = {}) {
   const app = express(); const store = options.store ?? new ConversationStore();
-  const coordinator = new AdaptationCoordinator(store, scenarios, options.adaptation ?? adaptationConfig({}), options.provider);
+  const config = options.adaptation ?? adaptationConfig({});
+  const coordinator = new AdaptationCoordinator(store, scenarios, config, options.provider, options.decider);
+  const speech = config.speech ?? { model: 'higgs-tts-3', voice: 'default', timeoutMs: 15000 };
   app.disable('x-powered-by');
   app.use('/api', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   // Local app: reject cross-origin writes; do not provide a public token minting service.
@@ -48,7 +56,8 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     coordinator.initialize(created.id, mode, resumed.restored);
     const prepared = coordinator.instructions(created.id); const session = store.get(created.id);
     const config = { ...buildContext(scenario), instructions: prepared.instructions };
-    res.status(201).json({ session, config: buildHiggsConfig(config), credential });
+    // Higgs writes replies as text; the speech route voices them with Higgs TTS 3.
+    res.status(201).json({ session, config: buildHiggsConfig(config, { text: true }), credential });
   });
   app.patch('/api/sessions/:id', (req, res) => {
     const session = store.lifecycle(req.params.id, req.body);
@@ -58,6 +67,51 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
   app.get('/api/sessions/:id/adaptation', (req, res) => {
     const prepared = coordinator.instructions(req.params.id);
     res.json({ ...coordinator.get(req.params.id), prepared, steering: 'experimental', synchronousQualified: false });
+  });
+  // Step 0: judge a recorded user line (decision model; full appraisal on a major shift).
+  app.post('/api/sessions/:id/judge', async (req, res) => {
+    const body = judgePayload.safeParse(req.body);
+    if (!body.success) throw new ApiError(400, 'Invalid judge request.');
+    res.json(await coordinator.judgeTurn(req.params.id, body.data.turnId));
+  });
+  // Step 2: choose an emotion per sentence and stream the reply as PCM16 24 kHz from Higgs TTS 3.
+  app.post('/api/sessions/:id/speech', async (req, res) => {
+    const body = speechPayload.safeParse(req.body);
+    if (!body.success) throw new ApiError(400, 'Invalid speech request.');
+    const { replyItemId, text, discardedDraft, userItemId } = body.data; const id = req.params.id; store.get(id);
+    const controller = new AbortController();
+    // The browser aborts when the user interrupts; stop paying for audio nobody will hear.
+    res.on('close', () => { if (!res.writableFinished) controller.abort(); });
+    const { input, record } = await coordinator.voice(id, replyItemId, text, controller.signal);
+    const tag = `session ${id.slice(0, 8)} reply ${replyItemId}`;
+    const tts = { model: speech.model, voice: speech.voice, input, seconds: 0, ms: 0 };
+    const finish = (extra: Partial<typeof tts> & { firstAudioMs?: number; stopped?: boolean; error?: string }) =>
+      coordinator.finishTurn(id, { reply: text, ...(discardedDraft !== undefined && { discardedDraft }), ...(userItemId && { userItemId }), tts: { ...tts, ...extra } });
+    let opened;
+    try { opened = await openSpeech(options.speechFetcher ?? fetch, options.apiKey, speech, input, controller.signal, tag); }
+    catch (error) {
+      const message = error instanceof ApiError ? error.message : 'Text-to-speech failed.';
+      coordinator.recordVoiceTiming(id, replyItemId, { error: message });
+      finish(controller.signal.aborted ? { stopped: true } : { error: message }); throw error;
+    }
+    res.status(200).set({ 'Content-Type': 'audio/pcm', 'X-Audio-Format': 'pcm16;rate=24000;channels=1',
+      'X-Voice-Emotions': record.sentences.map(s => s.emotion).join(',') });
+    let bytes = 0; let first: number | undefined; let broken = false;
+    try {
+      for await (const chunk of opened.body as unknown as AsyncIterable<Uint8Array>) {
+        if (first === undefined) first = Math.round(performance.now() - opened.started);
+        bytes += chunk.length; if (!res.write(chunk)) await new Promise(r => res.once('drain', r));
+        if (controller.signal.aborted) break;
+      }
+    } catch {
+      broken = !controller.signal.aborted;
+      if (broken) log('tts', `✗ stream broke for ${tag} after ${(bytes / 48000).toFixed(1)} s of audio`);
+    } finally {
+      coordinator.recordVoiceTiming(id, replyItemId, { ...(first !== undefined && { ttsFirstAudioMs: first }) });
+      finish({ seconds: bytes / 48000, ms: Math.round(performance.now() - opened.started), ...(first !== undefined && { firstAudioMs: first }),
+        ...(controller.signal.aborted && { stopped: true }), ...(broken && { error: 'the audio stream broke' }) });
+      res.end();
+    }
   });
   app.post('/api/sessions/:id/appraisals', async (req, res) => {
     const session = store.get(req.params.id);
