@@ -15,15 +15,77 @@ function harness(overrides: Partial<ClientOptions> = {}) {
   const player = { resume: vi.fn(async () => {}), reset: vi.fn(), enqueueBase64: vi.fn(), flush: vi.fn(async () => 520), close: vi.fn(async () => {}) };
   const mic = { active: false, start: vi.fn(async () => { mic.active = true; }), stop: vi.fn(async () => { mic.active = false; }) };
   let chunk: (a: string) => void = () => {};
+  let drained = () => {}; let started = () => {};
   const opts = { bootstrap: vi.fn(async () => ({ session: { id: 'local' }, config: { type: 'session.update' }, credential: { value: 'bai-eph-test', expires_at: 9 } }) as SessionBootstrap),
     onBootstrap: vi.fn(), onState: vi.fn(), onActivity: vi.fn(), onEvent: vi.fn(), onError: vi.fn(), onMic: vi.fn(), onLevel: vi.fn(),
-    socketFactory: vi.fn(() => socket as unknown as WebSocket), playerFactory: () => player,
+    onApplication: vi.fn(), onLatency: vi.fn(),
+    socketFactory: vi.fn(() => socket as unknown as WebSocket), playerFactory: (onDrain: () => void, _failure: (message: string) => void, onStart: () => void) => { drained = onDrain; started = onStart; return player; },
     micFactory: (send: (a: string) => void) => { chunk = send; return mic; }, ...overrides };
   const client = new HiggsClient(opts);
-  return { client, opts, socket, player, mic, chunk: (a: string) => chunk(a) };
+  return { client, opts, socket, player, mic, chunk: (a: string) => chunk(a), drained: () => drained(), playbackStarted: () => started() };
 }
-afterEach(() => vi.useRealTimers());
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 describe('Higgs adapter with mocked transport and audio', () => {
+  it('defers adaptive updates through generation and playback, and records only matching acknowledgements', async () => {
+    const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
+    h.socket.receive({ type: 'response.created', response: { id: 'r1' } });
+    h.socket.receive({ type: 'response.output_audio.delta', item_id: 'a1', delta: 'pcm' });
+    h.client.queueInstructions(1, 'Warm but still Alex.');
+    expect(h.socket.sent).toHaveLength(1);
+    h.socket.receive({ type: 'response.done', response: { id: 'r1' } }); expect(h.socket.sent).toHaveLength(1);
+    h.drained(); expect(h.socket.sent.at(-1)).toMatchObject({ type: 'session.update', session: { instructions: 'Warm but still Alex.' } });
+    h.socket.receive({ type: 'session.updated', session: { instructions: 'Other instructions' } });
+    expect(h.opts.onApplication).not.toHaveBeenCalledWith(1, 'acknowledged');
+    h.socket.receive({ type: 'session.updated', session: { instructions: 'Warm but still Alex.' } });
+    expect(h.opts.onApplication).toHaveBeenCalledWith(1, 'acknowledged');
+    const count = h.socket.sent.length; h.client.queueInstructions(1, 'duplicate'); expect(h.socket.sent).toHaveLength(count);
+    expect(h.socket.sent.some(e => e.type === 'response.create')).toBe(false); await h.client.disconnect();
+  });
+  it('does not update while the user speaks or while waiting for an automatic response', async () => {
+    const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
+    h.socket.receive({ type: 'input_audio_buffer.speech_started', item_id: 'u1' }); h.client.queueInstructions(1, 'Curious.');
+    h.socket.receive({ type: 'input_audio_buffer.speech_stopped', item_id: 'u1' }); expect(h.socket.sent).toHaveLength(1);
+    h.socket.receive({ type: 'response.created', response: { id: 'r1' } });
+    h.socket.receive({ type: 'response.done', response: { id: 'r1' } }); expect(h.socket.sent).toHaveLength(2);
+    await h.client.disconnect();
+  });
+  it('times out a guidance update without disrupting the voice connection', async () => {
+    vi.useFakeTimers(); const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
+    h.client.queueInstructions(1, 'New guidance'); await vi.advanceTimersByTimeAsync(5001);
+    expect(h.opts.onApplication).toHaveBeenCalledWith(1, 'failed'); expect(h.client.connectionState).toBe('ready');
+    const count = h.socket.sent.length; h.client.queueInstructions(2, 'Later guidance'); expect(h.socket.sent).toHaveLength(count);
+    await h.client.disconnect();
+  });
+  it('coalesces queued state versions while keeping acknowledgements ordered', async () => {
+    const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
+    h.client.queueInstructions(1, 'First'); h.client.queueInstructions(2, 'Second'); h.client.queueInstructions(3, 'Third');
+    expect(h.socket.sent).toHaveLength(2);
+    h.socket.receive({ type: 'session.updated', session: { instructions: 'First' } });
+    expect(h.socket.sent.at(-1).session.instructions).toBe('Third');
+    h.socket.receive({ type: 'session.updated', session: { instructions: 'Third' } });
+    expect(h.opts.onApplication).toHaveBeenCalledWith(3, 'acknowledged');
+    expect(h.socket.sent.some(e => e.session?.instructions === 'Second')).toBe(false); await h.client.disconnect();
+  });
+  it('cancels in-flight instruction application and ignores a late acknowledgement after disconnect', async () => {
+    const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' });
+    h.client.queueInstructions(1, 'Warm'); const callback = h.socket.onmessage;
+    await h.client.disconnect(); callback?.({ data: JSON.stringify({ type: 'session.updated', session: { instructions: 'Warm' } }) });
+    expect(h.opts.onApplication).toHaveBeenCalledWith(1, 'failed');
+    expect(h.opts.onApplication).not.toHaveBeenCalledWith(1, 'acknowledged');
+  });
+  it('measures actual event and playback timing using the monotonic clock and PCM position', async () => {
+    const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
+    const h = harness(); await h.client.connect(); h.socket.open(); h.socket.receive({ type: 'session.created' }); await h.client.toggleMic();
+    h.socket.receive({ type: 'input_audio_buffer.speech_started', item_id: 'u1' }); h.chunk(Buffer.alloc(4800).toString('base64'));
+    now.mockReturnValue(1500); h.socket.receive({ type: 'input_audio_buffer.speech_stopped', item_id: 'u1', audio_end_ms: 80 });
+    now.mockReturnValue(1600); h.socket.receive({ type: 'response.created', response: { id: 'r1' } });
+    now.mockReturnValue(1700); h.socket.receive({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'u1' });
+    now.mockReturnValue(1800); h.socket.receive({ type: 'response.output_audio.delta', response_id: 'r1', item_id: 'a1', delta: 'pcm' });
+    now.mockReturnValue(1830); h.playbackStarted();
+    expect(h.opts.onLatency).toHaveBeenLastCalledWith({ turnId: 'u1', speechEndedAt: 980, speechStoppedAt: 1500,
+      responseId: 'r1', responseCreatedAt: 1600, transcriptFinalAt: 1700, firstAudioAt: 1800, playbackStartedAt: 1830, appliedStateVersion: 0 });
+    await h.client.disconnect();
+  });
   it('opens exactly once, configures on open, and waits for acknowledgement before mic audio', async () => {
     const h = harness(); await Promise.all([h.client.connect(), h.client.connect()]);
     expect(h.opts.socketFactory).toHaveBeenCalledTimes(1);

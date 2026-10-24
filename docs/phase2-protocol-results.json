@@ -1,0 +1,123 @@
+{
+  "testedAt": "2026-10-24T01:04:12.591Z",
+  "timeBoxSeconds": 180,
+  "instructionUpdates": [
+    {
+      "repetition": 0,
+      "guidance": "Be reserved and cautious; ask one gentle question.",
+      "updateKind": "instructions-only",
+      "sessionRetained": true,
+      "configurationRetained": true,
+      "instructionAcknowledged": true,
+      "contextMentioned": true,
+      "reply": "You're Jordan, and you enjoy pottery. Maybe we could talk about what draws you to it—like, is it the process, the creativity, or something else?"
+    },
+    {
+      "repetition": 0,
+      "guidance": "Be warm and curious; express a little enthusiasm.",
+      "updateKind": "complete",
+      "sessionRetained": true,
+      "configurationRetained": true,
+      "instructionAcknowledged": true,
+      "contextMentioned": true,
+      "reply": "You're Jordan, and you enjoy pottery. Maybe we could talk about what draws you to it—like, is it the process, the creativity, or something else?"
+    },
+    {
+      "repetition": 0,
+      "guidance": "Be guarded and skeptical; politely question assumptions.",
+      "updateKind": "complete",
+      "sessionRetained": true,
+      "configurationRetained": true,
+      "instructionAcknowledged": true,
+      "contextMentioned": true,
+      "reply": "You're Jordan, and you enjoy pottery. Maybe we could talk about what draws you to it—like, is it the process, the creativity, or something else?"
+    },
+    {
+      "repetition": 1,
+      "guidance": "Be reserved and cautious; ask one gentle question.",
+      "updateKind": "instructions-only",
+      "sessionRetained": true,
+      "configurationRetained": true,
+      "instructionAcknowledged": true,
+      "contextMentioned": true,
+      "reply": "You're Jordan, and you enjoy pottery. Maybe we could talk about what kind of pieces you like to make?"
+    },
+    {
+      "repetition": 1,
+      "guidance": "Be warm and curious; express a little enthusiasm.",
+      "updateKind": "complete",
+      "sessionRetained": true,
+      "configurationRetained": true,
+      "instructionAcknowledged": true,
+      "contextMentioned": true,
+      "reply": "You're Jordan, and you enjoy pottery. Maybe we could talk about what kind of pieces you like to make?"
+    },
+    {
+      "repetition": 1,
+      "guidance": "Be guarded and skeptical; politely question assumptions.",
+      "updateKind": "complete",
+      "sessionRetained": true,
+      "configurationRetained": true,
+      "instructionAcknowledged": true,
+      "contextMentioned": true,
+      "reply": "You're Jordan, and you enjoy pottery. Maybe we could talk about what kind of pieces you like to make?"
+    },
+    {
+      "repetition": 2,
+      "guidance": "Be reserved and cautious; ask one gentle question.",
+      "updateKind": "instructions-only",
+      "sessionRetained": true,
+      "configurationRetained": true,
+      "instructionAcknowledged": true,
+      "contextMentioned": true,
+      "reply": "You're Jordan, and you enjoy pottery. Maybe we could talk about what kind of pieces you like to make?"
+    },
+    {
+      "repetition": 2,
+      "guidance": "Be warm and curious; express a little enthusiasm.",
+      "updateKind": "complete",
+      "sessionRetained": true,
+      "configurationRetained": true,
+      "instructionAcknowledged": true,
+      "contextMentioned": true,
+      "reply": "You're Jordan, and you enjoy pottery. Maybe we could talk about what kind of pieces you like to make?"
+    },
+    {
+      "repetition": 2,
+      "guidance": "Be guarded and skeptical; politely question assumptions.",
+      "updateKind": "complete",
+      "sessionRetained": true,
+      "configurationRetained": true,
+      "instructionAcknowledged": true,
+      "contextMentioned": true,
+      "reply": "You're Jordan, and you enjoy pottery. Maybe we could talk about what kind of pieces you like to make?"
+    }
+  ],
+  "responseTiming": [
+    {
+      "delayMs": 250,
+      "error": "Timed out waiting for response.done"
+    },
+    {
+      "delayMs": 1000,
+      "resolvedCreateResponse": false,
+      "prematureResponse": false,
+      "responseCount": 1,
+      "transcriptAfterStopMs": 320,
+      "updateAckAfterTranscriptMs": 1291,
+      "firstAudioAfterStopMs": 2491,
+      "firstAudioAfterRequestMs": 862
+    },
+    {
+      "delayMs": 2000,
+      "resolvedCreateResponse": false,
+      "prematureResponse": false,
+      "responseCount": 1,
+      "transcriptAfterStopMs": 247,
+      "updateAckAfterTranscriptMs": 2603,
+      "firstAudioAfterStopMs": 3982,
+      "firstAudioAfterRequestMs": 1107
+    }
+  ],
+  "synchronousQualified": false
+}

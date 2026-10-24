@@ -2,6 +2,7 @@ import type { ProtocolEvent, SessionBootstrap } from '../../shared/domain';
 import { RingPlayer } from '../audio/playback';
 import { MicCapture } from '../audio/capture';
 import { describeClose, inputAudioAppend, truncateItem, WS_URL } from './protocol';
+import type { LatencyRecord } from '../../shared/characterState';
 export type ConnectionState = 'idle' | 'connecting' | 'ready' | 'closing' | 'closed';
 export type Activity = 'idle' | 'listening' | 'thinking' | 'speaking';
 export interface Player {
@@ -15,8 +16,10 @@ export interface ClientOptions {
   onState(state: ConnectionState): void; onActivity(activity: Activity): void;
   onEvent(event: ProtocolEvent): void; onError(message: string): void;
   onMic(active: boolean): void; onLevel(level: number): void;
+  onApplication?: (version: number, status: 'acknowledged' | 'failed' | 'deferred') => void;
+  onLatency?: (metric: LatencyRecord) => void;
   socketFactory?: (url: string, protocols: string[]) => WebSocket;
-  playerFactory?: (drained: () => void, failure: (m: string) => void) => Player;
+  playerFactory?: (drained: () => void, failure: (m: string) => void, started: () => void) => Player;
   micFactory?: (chunk: (b64: string) => void, level: (rms: number) => void) => Microphone;
 }
 export class HiggsClient {
@@ -26,6 +29,12 @@ export class HiggsClient {
   private blocked = new Set<string>(); private generating = false; private queued = false;
   private hadSession = false;
   private closing?: Promise<void>;
+  private pendingInstructions?: { version: number; instructions: string };
+  private applying?: { version: number; instructions: string; timer: ReturnType<typeof setTimeout> };
+  private appliedVersion = 0; private updateFailed = false; private userSpeaking = false; private awaitingResponse = false;
+  private latestUserId?: string; private currentResponseId?: string;
+  private metrics = new Map<string, LatencyRecord>(); private responseTurns = new Map<string, string>();
+  private inputMs = 0; private inputClock: { startMs: number; endMs: number; at: number }[] = [];
   constructor(private options: ClientOptions) {}
   get connectionState() { return this.state; }
   private setState(s: ConnectionState) { this.state = s; this.options.onState(s); }
@@ -36,11 +45,20 @@ export class HiggsClient {
     if (this.state === 'connecting' || this.state === 'ready' || this.state === 'closing') return;
     const gen = ++this.gen; this.setState('connecting'); this.blocked.clear(); this.hadSession = false;
     this.currentItem = undefined; this.generating = false; this.queued = false;
+    this.appliedVersion = 0; this.updateFailed = false; this.userSpeaking = false; this.awaitingResponse = false;
+    this.latestUserId = undefined; this.currentResponseId = undefined; this.metrics.clear(); this.responseTurns.clear();
+    this.inputMs = 0; this.inputClock = [];
     this.controller = new AbortController();
     const alive = () => gen === this.gen;
-    const drained = () => { if (alive()) { this.queued = false; this.options.onActivity(this.generating ? 'thinking' : this.mic?.active ? 'listening' : 'idle'); } };
+    const drained = () => { if (alive()) { this.queued = false; this.options.onActivity(this.generating ? 'thinking' : this.mic?.active ? 'listening' : 'idle'); this.applyWhenIdle(); } };
     const fail = (message: string) => { if (alive()) { this.options.onError(message); void this.disconnect(); } };
-    const player = this.options.playerFactory?.(drained, fail) ?? new RingPlayer(speaking => { if (!speaking) drained(); }, fail);
+    const playbackStarted = () => {
+      if (!alive()) return;
+      const id = this.currentResponseId ? this.responseTurns.get(this.currentResponseId) : undefined;
+      const metric = id ? this.metrics.get(id) : undefined;
+      if (metric && metric.playbackStartedAt === undefined) { metric.playbackStartedAt = performance.now(); this.emitMetric(metric); }
+    };
+    const player = this.options.playerFactory?.(drained, fail, playbackStarted) ?? new RingPlayer(speaking => { if (!speaking) drained(); }, fail, playbackStarted);
     this.player = player;
     this.mic = this.options.micFactory?.(audio => this.appendAudio(audio), this.options.onLevel)
       ?? new MicCapture(audio => this.appendAudio(audio), this.options.onLevel);
@@ -84,6 +102,9 @@ export class HiggsClient {
       this.options.onError('The network cannot keep up with microphone audio. Reconnect on a stable connection.');
       void this.disconnect(); return;
     }
+    const duration = (Math.floor(audio.length * 3 / 4) - (audio.endsWith('==') ? 2 : audio.endsWith('=') ? 1 : 0)) / 48;
+    this.inputClock.push({ startMs: this.inputMs, endMs: this.inputMs + duration, at: performance.now() });
+    this.inputMs += duration; if (this.inputClock.length > 300) this.inputClock.shift();
     this.send(inputAudioAppend(audio));
   }
   private handle(event: ProtocolEvent, gen: number) {
@@ -91,8 +112,24 @@ export class HiggsClient {
     switch (event.type) {
       case 'session.created': case 'session.updated':
         if (this.state === 'connecting') { clearTimeout(this.timeout); this.setState('ready'); }
+        else if (event.type === 'session.updated' && this.applying) {
+          const instructions = (event.session as { instructions?: string } | undefined)?.instructions;
+          if (instructions === this.applying.instructions) {
+            clearTimeout(this.applying.timer); this.appliedVersion = this.applying.version;
+            this.options.onApplication?.(this.applying.version, 'acknowledged'); this.applying = undefined; this.applyWhenIdle();
+          }
+        }
         break;
-      case 'response.created': this.generating = true; this.options.onActivity('thinking'); break;
+      case 'response.created': {
+        this.generating = true; this.awaitingResponse = false; this.options.onActivity('thinking');
+        const response = event.response as { id?: string } | undefined; this.currentResponseId = response?.id;
+        if (response?.id && this.latestUserId) {
+          this.responseTurns.set(response.id, this.latestUserId);
+          const metric = this.metric(this.latestUserId); metric.responseId = response.id;
+          metric.responseCreatedAt = performance.now(); metric.appliedStateVersion = this.appliedVersion; this.emitMetric(metric);
+        }
+        break;
+      }
       case 'response.output_item.added': {
         const item = event.item as { id?: string; role?: string } | undefined;
         if (item?.role === 'assistant' && item.id) this.currentItem = item.id; break;
@@ -100,14 +137,38 @@ export class HiggsClient {
       case 'response.output_audio.delta': {
         const id = typeof event.item_id === 'string' ? event.item_id : this.currentItem;
         if (!id || this.blocked.has(id) || typeof event.delta !== 'string' || !event.delta) break;
+        const responseId = typeof event.response_id === 'string' ? event.response_id : this.currentResponseId;
+        const turnId = responseId ? this.responseTurns.get(responseId) : undefined;
+        const metric = turnId ? this.metrics.get(turnId) : undefined;
+        if (metric && metric.firstAudioAt === undefined) { metric.firstAudioAt = performance.now(); this.emitMetric(metric); }
         // Each item gets a fresh playback counter, even if output_item.added preceded audio.
         if (this.playbackItem !== id) { this.player?.reset(); this.playbackItem = id; }
         this.currentItem = id; this.queued = true;
         this.player?.enqueueBase64(event.delta); this.options.onActivity('speaking'); break;
       }
-      case 'response.done': this.generating = false; if (!this.queued) this.options.onActivity(this.mic?.active ? 'listening' : 'idle'); break;
-      case 'input_audio_buffer.speech_started': void this.bargeIn(gen); this.options.onActivity('listening'); break;
-      case 'input_audio_buffer.speech_stopped': this.options.onActivity('thinking'); break;
+      case 'response.done':
+        if (!(event.response as { id?: string } | undefined)?.id || (event.response as { id?: string }).id === this.currentResponseId) {
+          this.generating = false; if (!this.queued) this.options.onActivity(this.mic?.active ? 'listening' : 'idle'); this.applyWhenIdle();
+        } break;
+      case 'input_audio_buffer.speech_started':
+        this.userSpeaking = true;
+        if (typeof event.item_id === 'string') this.latestUserId = event.item_id;
+        void this.bargeIn(gen); this.options.onActivity('listening'); break;
+      case 'input_audio_buffer.speech_stopped':
+        this.userSpeaking = false; this.awaitingResponse = true; this.options.onActivity('thinking');
+        if (typeof event.item_id === 'string') {
+          const metric = this.metric(event.item_id); metric.speechStoppedAt = performance.now();
+          if (typeof event.audio_end_ms === 'number') {
+            const endMs = event.audio_end_ms;
+            const segment = this.inputClock.find(s => endMs >= s.startMs && endMs <= s.endMs);
+            if (segment) metric.speechEndedAt = segment.at - (segment.endMs - endMs);
+          }
+          this.emitMetric(metric);
+        }
+        break;
+      case 'conversation.item.input_audio_transcription.completed':
+        if (typeof event.item_id === 'string') { const metric = this.metric(event.item_id); metric.transcriptFinalAt = performance.now(); this.emitMetric(metric); }
+        break;
       case 'session.idle_timeout': case 'session.max_duration_reached':
         this.options.onError(event.type === 'session.idle_timeout' ? 'Session ended after inactivity. Connect again to start fresh.' : 'Boson session duration limit reached. Connect again to start fresh.');
         void this.disconnect(); break;
@@ -116,6 +177,28 @@ export class HiggsClient {
         this.options.onError('Boson reported a session error. Check credentials, account credit, and the configured model/voice.');
         void this.disconnect(); break;
     }
+  }
+  private metric(id: string): LatencyRecord {
+    let metric = this.metrics.get(id);
+    if (!metric) { metric = { turnId: id, appliedStateVersion: this.appliedVersion }; this.metrics.set(id, metric); }
+    return metric;
+  }
+  private emitMetric(metric: LatencyRecord) { this.options.onLatency?.({ ...metric }); }
+  /** Async mode never suppresses VAD or requests an extra response. Latest state wins. */
+  queueInstructions(version: number, instructions: string) {
+    if (this.state !== 'ready' || this.updateFailed || version <= this.appliedVersion ||
+      version <= (this.pendingInstructions?.version ?? 0) || version <= (this.applying?.version ?? 0)) return;
+    this.pendingInstructions = { version, instructions };
+    if (this.generating || this.queued || this.userSpeaking || this.awaitingResponse || this.applying) this.options.onApplication?.(version, 'deferred');
+    this.applyWhenIdle();
+  }
+  private applyWhenIdle() {
+    if (this.state !== 'ready' || this.generating || this.queued || this.userSpeaking || this.awaitingResponse || this.applying || !this.pendingInstructions || this.updateFailed) return;
+    const update = this.pendingInstructions; this.pendingInstructions = undefined;
+    this.applying = { ...update, timer: setTimeout(() => {
+      this.options.onApplication?.(update.version, 'failed'); this.applying = undefined; this.updateFailed = true;
+    }, 5000) };
+    this.send({ type: 'session.update', event_id: `state-${this.gen}-${update.version}`, session: { instructions: update.instructions } });
   }
   private playbackItem?: string;
   private async bargeIn(gen: number) {
@@ -141,6 +224,8 @@ export class HiggsClient {
   async disconnect(): Promise<void> {
     if (this.closing) return this.closing;
     ++this.gen; clearTimeout(this.timeout); this.controller?.abort();
+    if (this.applying) { clearTimeout(this.applying.timer); this.options.onApplication?.(this.applying.version, 'failed'); }
+    this.applying = undefined; this.pendingInstructions = undefined;
     this.setState('closing');
     const ws = this.ws; this.ws = null;
     if (ws) { ws.onopen = null; ws.onmessage = null; ws.onclose = null; ws.onerror = null; if (ws.readyState < 2) ws.close(1000, 'client disconnect'); }

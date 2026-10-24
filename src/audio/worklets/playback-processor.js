@@ -110,6 +110,7 @@ class PlaybackProcessor extends AudioWorkletProcessor {
     }
 
     if (playedAny) {
+      if (!this.wasPlaying) this.port.postMessage({ type: "started" });
       this.wasPlaying = true;
     } else if (this.wasPlaying) {
       this.wasPlaying = false;

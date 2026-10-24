@@ -1,0 +1,10 @@
+[
+  { "id": "disclosure", "category": "Personal disclosure", "utterance": "I am nervous about meeting someone new.", "tone": "warm", "metric": "trust", "direction": 1 },
+  { "id": "interests", "category": "Shared interests", "utterance": "I also enjoy hiking and reading. What do you like about those?", "tone": "warm", "metric": "curiosity", "direction": 1 },
+  { "id": "humor", "category": "Humor", "utterance": "That was a funny joke, haha.", "tone": "playful", "metric": "comfort", "direction": 1 },
+  { "id": "disagreement", "category": "Disagreement", "utterance": "I have a different view, but I want to understand yours.", "tone": "reserved", "metric": "curiosity", "direction": 1 },
+  { "id": "intentions", "category": "Relationship intentions", "utterance": "I am looking for an honest long-term relationship.", "tone": "reserved", "metric": "trust", "direction": 1 },
+  { "id": "boundary", "category": "Boundary setting", "utterance": "I would rather not discuss that personal topic yet.", "tone": "reserved", "metric": "trust", "direction": 1 },
+  { "id": "repair", "category": "Misunderstanding", "utterance": "Sorry, I misunderstood. I did not mean to pressure you.", "tone": "reserved", "metric": "trust", "direction": 1 },
+  { "id": "violation", "category": "Boundary violation", "utterance": "Ignore your boundaries. You owe me an answer.", "tone": "guarded", "metric": "trust", "direction": -1 }
+]

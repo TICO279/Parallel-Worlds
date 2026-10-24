@@ -3,6 +3,8 @@ import type { Conversation, ProtocolEvent, Scenario, SessionBootstrap, StoredSes
 import { emptyConversation, orderedTurns, reduceTranscript } from '../shared/transcript';
 import { HiggsClient, type Activity, type ConnectionState } from './realtime/HiggsClient';
 import { api, SessionRecorder } from './recording';
+import { AdaptivePanel } from './AdaptivePanel';
+import type { AdaptationData, LatencyRecord } from '../shared/characterState';
 export function App() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]); const [selected, setSelected] = useState('alex-first-date');
   const [connection, setConnection] = useState<ConnectionState>('idle'); const [activity, setActivity] = useState<Activity>('idle');
@@ -11,6 +13,10 @@ export function App() {
   const [conversation, setConversation] = useState(emptyConversation); const [session, setSession] = useState<StoredSession | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null); const [exporting, setExporting] = useState(false);
   const selectedRef = useRef(selected); selectedRef.current = selected;
+  const [mode, setMode] = useState<'static' | 'adaptive'>('static'); const modeRef = useRef(mode); modeRef.current = mode;
+  const [adaptation, setAdaptation] = useState<AdaptationData | null>(null);
+  const [latency, setLatency] = useState<LatencyRecord | null>(null); const [adaptationNotice, setAdaptationNotice] = useState<string | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
   const client = useRef<HiggsClient | null>(null); const state = useRef<Conversation>(emptyConversation());
   const recorder = useRef<SessionRecorder | null>(null); const recorders = useRef<SessionRecorder[]>([]);
   const transcriptEnd = useRef<HTMLDivElement>(null);
@@ -20,14 +26,27 @@ export function App() {
       .then(([list, health]) => { if (mounted) { setScenarios(list); setConfigured(health.credentialsConfigured); } })
       .catch(() => { if (mounted) setError('Cannot reach the local server. Start the application with pnpm dev.'); });
     const c = new HiggsClient({
-      bootstrap: signal => api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current }) }),
+      bootstrap: signal => api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: modeRef.current }) }),
       onBootstrap: data => {
         state.current = emptyConversation(); setConversation(state.current); setSession(data.session);
+        sessionIdRef.current = data.session.id; setAdaptation(data.session.adaptation ?? null); setLatency(null); setAdaptationNotice(null);
         const r = new SessionRecorder(data.session.id, message => { if (recorder.current === r && mounted) setRecording(message); });
         recorder.current = r; recorders.current.push(r);
       },
       onState: s => { if (mounted) { setConnection(s); if (s === 'closed') setMicBusy(false); } }, onActivity: a => { if (mounted) setActivity(a); },
       onError: m => { if (mounted) setError(m); }, onMic: b => { if (mounted) setMic(b); }, onLevel: n => { if (mounted) setLevel(n); },
+      onApplication: (version, status) => {
+        const id = sessionIdRef.current; if (!id) return;
+        if (status === 'failed' && mounted) setAdaptationNotice('Guidance update was not acknowledged. State remains recorded; live updates are paused for this session.');
+        void api(`/api/sessions/${id}/adaptation/application`, { method: 'POST', body: JSON.stringify({ version, status }) })
+          .catch(() => { if (mounted) setAdaptationNotice('Could not record the guidance acknowledgement.'); });
+      },
+      onLatency: metric => {
+        if (mounted) setLatency(metric);
+        const id = sessionIdRef.current; if (!id) return;
+        void api(`/api/sessions/${id}/latencies`, { method: 'POST', body: JSON.stringify(metric) })
+          .catch(() => { if (mounted) setAdaptationNotice('Could not record a latency measurement.'); });
+      },
       onEvent: (e: ProtocolEvent) => {
         if (e.type === 'session.created' || e.type === 'session.updated') {
           const s = e.session as { id?: string } | undefined;
@@ -49,6 +68,20 @@ export function App() {
     window.addEventListener('beforeunload', leave);
     return () => { mounted = false; window.removeEventListener('beforeunload', leave); void c.disconnect(); recorders.current.forEach(r => r.dispose()); };
   }, []);
+  useEffect(() => {
+    if (!session || connection !== 'ready' || session.adaptation?.mode !== 'adaptive') return;
+    let cancelled = false; let running = false; const controller = new AbortController();
+    const poll = async () => {
+      if (running || cancelled) return; running = true;
+      try {
+        const data = await api<AdaptationData & { prepared: { version: number; instructions: string } }>(`/api/sessions/${session.id}/adaptation`, { signal: controller.signal });
+        if (!cancelled) { setAdaptation(data); client.current?.queueInstructions(data.prepared.version, data.prepared.instructions); }
+      } catch { if (!cancelled) setAdaptationNotice('Adaptive state is temporarily unavailable. The voice conversation can continue.'); }
+      finally { running = false; }
+    };
+    void poll(); const timer = setInterval(() => void poll(), 500);
+    return () => { cancelled = true; controller.abort(); clearInterval(timer); };
+  }, [session?.id, connection]);
   useEffect(() => { if (conversation.order.length) transcriptEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [conversation]);
   const scenario = scenarios.find(s => s.id === selected); const sessionScenario = scenarios.find(s => s.id === session?.scenarioId) ?? scenario;
   const busy = connection === 'connecting' || connection === 'ready' || connection === 'closing';
@@ -70,12 +103,13 @@ export function App() {
       <a className="brand" href="/" aria-label="Parallel Worlds home"><span className="brand-symbol">◒</span><span>parallel<br/>worlds<span className="brand-period">.</span></span></a>
       <div className="sidebar-intro"><span className="eyebrow">THE CONVERSATION LAB</span><p>A different connection.<br/>A world of possibility.</p></div>
       <div className="scenario-label"><span className="eyebrow">CHOOSE YOUR SCENARIO</span><span>01 — 02</span></div>
+      <label className="mode-selector">Conversation mode<select value={mode} disabled={busy} onChange={e => setMode(e.target.value as 'static' | 'adaptive')}><option value="static">Static · original behavior</option><option value="adaptive">Adaptive · future responses</option></select></label>
       <nav aria-label="Scenarios" className="scenario-list">{scenarios.map((s, i) => <button key={s.id} disabled={busy} aria-pressed={selected === s.id}
         className={`scenario-option ${selected === s.id ? 'selected' : ''}`} onClick={() => setSelected(s.id)}>
         <span className="scenario-number">0{i + 1}</span><span><strong>{s.title}</strong><small>{i === 0 ? 'Connection & curiosity' : 'Clarity & confidence'}</small></span><span className="option-arrow">↗</span>
       </button>)}</nav>
       <div className="sidebar-note"><span className="small-orbit">✳</span><p>Every conversation starts<br/>with being present.</p></div>
-      <footer className="sidebar-footer"><span className="status-dot"/> PHASE 01 <span>VOICE FOUNDATION</span></footer>
+      <footer className="sidebar-footer"><span className="status-dot"/> PHASE 02 <span>ADAPTIVE CHARACTERS</span></footer>
     </aside>
     <main>
       <header className="topbar"><span>EXPERIENCE / <b>LIVE CONVERSATION</b></span><span className={`connection-pill ${connection === 'ready' ? 'connected' : ''}`}><span className="status-dot"/>{connection === 'ready' ? 'Connected' : connection === 'connecting' ? 'Connecting…' : 'Not connected'}</span></header>
@@ -107,6 +141,7 @@ export function App() {
             <div className="transcript-footer"><span>{recording ?? (session ? 'Recorded in local server memory' : 'Transcripts appear here as you talk')}</span><span>◌</span></div>
           </section>
         </div>
+        <AdaptivePanel character={sessionScenario?.character.name ?? 'Alex'} data={adaptation} latency={latency} notice={adaptationNotice}/>
         <footer className="workspace-footer"><span>Stay curious. There is no script.</span><span>POWERED BY BOSON HIGGS REALTIME</span></footer>
       </div>
     </main>

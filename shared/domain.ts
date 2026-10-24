@@ -2,7 +2,7 @@ export type TurnStatus = 'pending' | 'streaming' | 'complete' | 'interrupted' | 
 export interface CharacterState { guidance?: string; }
 export interface Character {
   id: string; name: string; description: string; traits: string[];
-  values: string[]; motivation: string; speakingStyle: string; voice: string;
+  values: string[]; motivation: string; goals: string[]; boundaries: string[]; speakingStyle: string; voice: string;
 }
 export interface Scenario { id: string; title: string; setting: string; character: Character; }
 export interface SessionSpec { instructions: string; voice: string; language: string; }
@@ -18,8 +18,10 @@ export type SessionStatus = 'connecting' | 'active' | 'closed' | 'error';
 export interface StoredSession {
   schemaVersion: 1; id: string; bosonSessionId?: string; scenarioId: string; characterId: string;
   createdAt: number; updatedAt: number; status: SessionStatus; revision: number; turns: Turn[];
+  adaptation?: AdaptationData;
 }
 export interface ProtocolEvent { type: string; event_id?: string; [key: string]: unknown; }
 export interface SessionBootstrap {
   session: StoredSession; config: ProtocolEvent; credential: { value: string; expires_at: number };
 }
+import type { AdaptationData } from './characterState';

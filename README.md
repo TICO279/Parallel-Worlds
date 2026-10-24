@@ -4,6 +4,14 @@ A local voice-conversation lab powered by Boson Higgs Realtime. Phase 1 includes
 Alex's first date and Morgan's mock interview, microphone streaming, server VAD,
 interruptions, ordered transcripts, and JSON export.
 
+**Phase 2:** Optional Adaptive mode adds mock or opt-in live appraisal (DeepSeek Flash
+preferred), versioned character state,
+asynchronous instruction updates and a development panel. Static mode remains the
+default. See [Phase 2 configuration, live evidence and limitations](docs/phase2.md).
+Phase 2 validation: **115 automated tests pass**, including all 42 baseline tests;
+type checking and production build pass. Live Boson checks cover instruction updates,
+generated audio steering and the mock-appraisal integration. Human voice testing remains pending.
+
 ## Setup and launch
 
 Requirements: **Node.js 24 LTS** and **pnpm 11+**. The lockfile records tested versions.
@@ -45,6 +53,8 @@ linker avoid Windows shared-store symlink restrictions. No database or Docker is
 | `server/orchestrator.ts` | Typed scenarios, identity, prompt construction and completed-turn interface |
 | `server/higgs.ts` | Ephemeral credentials and mapping to Boson's session configuration |
 | `server/store.ts` | In-memory sessions, validated snapshots, revisions and turn notifications |
+| `server/adaptation/` | Provider abstraction, mock/opt-in DeepSeek and OpenAI adapters, pure state engine and ordered coordination |
+| `shared/characterState.ts` | State/appraisal schemas, version history and latency types |
 | `server/app.ts` | Local HTTP API and production frontend serving |
 | `shared/` | Domain types and pure transcript reconciliation |
 | `src/realtime/` | Socket lifecycle, acknowledgement gating, VAD and interruptions |
@@ -58,7 +68,8 @@ Audio flows directly between browser and Boson; the local server does not record
 relay it. Configuration uses `higgs-realtime`, `higgs-stt-3.1` transcription, 24 kHz mono
 PCM16, bare `server_vad`, and the built-in `default` voice. Profiles change instructions;
 both currently use the same voice preset. Character identity and optional mutable
-guidance are separate. No appraisal, emotion scores, branching, or rewind is implemented.
+guidance are separate. Adaptive mode adds appraisal and internal simulation scores;
+branching and rewind remain unimplemented.
 
 The permanent key stays server-side. Each connection gets a new 600-second ephemeral
 credential. Tokens never enter logs, the conversation store, or exports. Upstream
@@ -113,16 +124,16 @@ turn and requests a text response. It prints event names/timing, resolved model/
 and finalized response text, never raw token-bearing payloads. Timeout: 30 seconds.
 This tests connectivity and basic character responses, not microphone or speaker audio.
 
-Verified on 2026-10-23: **42 automated tests**, type checking and production build pass.
+Phase 1 verification on 2026-10-23: **42 original automated tests**, type checking and production build passed.
 Tests include an upstream recorded transcript, constructed event races, mocked socket
 and audio lifecycle, worklet counting/overflow, microphone cleanup, recording retries
 and real local HTTP requests. Browser smoke checks cover selection and missing-key errors.
 
 After a key was supplied, authenticated Boson probes successfully created sessions
 and completed text responses for Alex and Morgan. The resolved VAD threshold was 0.85.
-**Multi-turn live voice, interruption behavior against Boson, VAD tuning and physical
-microphone/speaker behavior remain untested.** Character behavior has only received
-this basic text smoke check. Upstream fixtures are not evidence of a new live audio test.
+Phase 2 adds [live update, synthetic audio, and static/adaptive text evaluation](docs/phase2.md).
+**Physical microphone/speaker conversations, human interruptions, live external
+appraisal and improved emotional realism remain unverified.**
 See [docs/experiments.md](docs/experiments.md) for live acceptance and next experiments.
 
 ## Troubleshooting
