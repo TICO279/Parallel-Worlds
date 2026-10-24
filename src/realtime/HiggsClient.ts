@@ -57,6 +57,15 @@ interface UserTurn {
  */
 const DRAFT_EVENTS: ReadonlySet<string> = new Set(['response.output_text.delta', 'response.output_text.done', 'response.output_item.added', 'response.output_item.done']);
 export class HiggsClient {
+  private replayItems: ProtocolEvent[] = []; private replayIndex = 0; private replayStarted = false;
+  private sendReplayItem() {
+    clearTimeout(this.timeout);
+    this.timeout = setTimeout(() => {
+      this.options.onError('Conversation history replay was not acknowledged. Reconnect to try again.');
+      void this.disconnect();
+    }, 10000);
+    this.send(this.replayItems[this.replayIndex]);
+  }
   private gen = 0; private ws: WebSocket | null = null; private controller?: AbortController;
   private player?: Player; private mic?: Microphone; private timeout?: ReturnType<typeof setTimeout>;
   private state: ConnectionState = 'idle'; private generating = false; private queued = false;
@@ -92,6 +101,7 @@ export class HiggsClient {
     this.inputMs = 0; this.inputClock = [];
     this.userEpoch = 0; this.guidanceOverlap = false; this.endTurn(); this.speaking = undefined;
     this.orphanResponses.clear(); this.responseItems.clear();
+    this.replayItems = structuredClone(this.options.seed?.() ?? []); this.replayIndex = 0; this.replayStarted = false;
     this.controller = new AbortController();
     const alive = () => gen === this.gen;
     const drained = () => {
@@ -158,6 +168,19 @@ export class HiggsClient {
     this.send(inputAudioAppend(audio));
   }
   private handle(raw: ProtocolEvent) {
+    if (raw.type === 'conversation.item.added') {
+      const item = raw.item as { id?: string; role?: string } | undefined;
+      if (item?.id?.startsWith(SEED_PREFIX)) {
+        const expected = this.replayItems[this.replayIndex]?.item as { id?: string; role?: string } | undefined;
+        if (this.state === 'connecting' && this.replayStarted && item.id === expected?.id && item.role === expected.role) {
+          this.replayIndex++;
+          if (this.replayIndex < this.replayItems.length) this.sendReplayItem();
+          else { clearTimeout(this.timeout); this.historyReady(); }
+        }
+        // Replay echoes are history, never new user turns or candidate replies.
+        return;
+      }
+    }
     // Text mode's final event has no item_id; attribute it to the draft so the transcript can use it.
     const event = raw.type === 'response.output_text.done' && typeof raw.item_id !== 'string' && this.turn?.draft?.itemId
       ? { ...raw, item_id: this.turn.draft.itemId } : raw;
@@ -167,10 +190,10 @@ export class HiggsClient {
     switch (event.type) {
       case 'session.created': case 'session.updated':
         if (this.state === 'connecting') {
-          clearTimeout(this.timeout);
-          for (const item of this.options.seed?.() ?? []) this.send(item);
-          this.setState('ready');
-          if (this.options.opens?.()) this.open();
+          if (this.replayStarted) break;
+          this.replayStarted = true;
+          if (this.replayItems.length) this.sendReplayItem();
+          else { clearTimeout(this.timeout); this.historyReady(); }
         } else if (event.type === 'session.updated' && t?.stage === 'updating') {
           // The post-appraisal instructions are now active: ask Higgs to draft again.
           this.sessionInstructions = t.instructions;
@@ -349,6 +372,11 @@ export class HiggsClient {
     }
   }
   /** Her opening line before anyone has spoken: drafted and voiced like a reply, with no user line to judge. */
+  private historyReady() {
+    const opens = this.options.opens?.();
+    this.setState('ready');
+    if (opens && !this.awaitingResponse && !this.turn) this.open();
+  }
   private open() {
     this.userEpoch++;
     this.turn = { epoch: this.userEpoch, verdict: 'ordinary', stage: 'drafting' };

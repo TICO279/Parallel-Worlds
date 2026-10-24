@@ -1,3 +1,4 @@
+import { registerDatingReview } from './datingReview';
 import express, { type ErrorRequestHandler } from 'express';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -30,7 +31,7 @@ const localOrigins = new Set([3000, 5173, 5174].flatMap(port =>
 function tunnelOrigin(origin: string) {
   try { const url = new URL(origin); return url.protocol === 'https:' && url.hostname.endsWith('.trycloudflare.com') && !url.port; } catch { return false; }
 }
-export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; dating?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider; decider?: Decider; speechFetcher?: typeof fetch } = {}) {
+export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; store?: ConversationStore; dist?: string; dating?: string; adaptation?: AdaptationConfig; provider?: AppraisalProvider; decider?: Decider; speechFetcher?: typeof fetch; reviewFetcher?: typeof fetch } = {}) {
   const app = express(); const store = options.store ?? new ConversationStore();
   const config = options.adaptation ?? adaptationConfig({});
   const coordinator = new AdaptationCoordinator(store, scenarios, config, options.provider, options.decider);
@@ -58,6 +59,7 @@ export function createApp(options: { apiKey?: string; fetcher?: typeof fetch; st
     }
     res.json([...dates.values()]);
   });
+  registerDatingReview(app, config.deepSeekKey ?? (config.decision?.provider === 'deepseek' ? config.decision.key : undefined), config.decision?.provider === 'deepseek' ? config.decision.model : 'deepseek-flash', options.reviewFetcher);
   app.post('/api/sessions', async (req, res) => {
     const id = req.body?.scenarioId;
     // An Ember date: her profile and yours. The lab continues one by its id once the server has seen it.

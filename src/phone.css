@@ -371,3 +371,26 @@ body:has(.ember-stage) {
     padding-bottom: max(10px, env(safe-area-inset-bottom));
   }
 }
+
+/* The review stays inside the existing phone bottom sheet. */
+.pw-sheet { max-height: 86%; overflow-y: auto; overscroll-behavior: contain; padding-bottom: max(28px, env(safe-area-inset-bottom)); }
+.pw-sheet .dating-review h2 { font-size: 21px; }
+.pw-sheet .dating-review h3 { font-size: 17px; margin: 10px 0; }
+.pw-sheet .dating-review p, .pw-sheet .dating-review small { line-height: 1.5; }
+.pw-sheet .dating-review button { color: #fff; background: #423d56; border: 0; border-radius: 14px; padding: 11px 14px; min-height: 44px; font: inherit; text-align: left; }
+.pw-sheet .dating-review button:disabled { opacity: .5; }
+.pw-sheet .review-header button { width: 100%; text-align: center; }
+.pw-sheet .review-strength, .pw-sheet .review-suggestion { margin: 20px 0; padding-top: 16px; border-top: 1px solid #ffffff20; }
+.pw-sheet .review-quote { display: block; width: 100%; }
+.pw-sheet .review-quote span { display: block; font-size: 12px; margin-top: 8px; color: #e2c9ff; }
+.pw-sheet .review-alternative { padding: 12px; margin: 12px 0; border-radius: 12px; background: #ffffff0a; }
+.pw-sheet .review-alternative p { margin-bottom: 0; }
+.pw-sheet .review-suggestion small { display: block; margin-top: 8px; opacity: .65; }
+.pw-sheet .review-note { font-size: 13px; opacity: .75; }
+.pw-sheet .eyebrow { font-size: 11px; letter-spacing: .06em; color: #d8bdf8; }
+.pw-sheet .review-error { color: #ffc4be; }
+.pw-feelings { margin: 20px 0; }
+.pw-feelings summary { cursor: pointer; padding: 12px 0; }
+.pw-pulse { animation: pw-review-pulse .7s ease-in-out 3; }
+@keyframes pw-review-pulse { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .pw-pulse { animation: none; } }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react';
 import type { Conversation, ConversationTree, ProtocolEvent, SessionBootstrap, TreeNode } from '../shared/domain';
 import { EMBER_DATE, scenarioFromPartner, type PartnerBrief } from '../shared/partner';
 import { emptyConversation, orderedTurns, reduceTranscript } from '../shared/transcript';
@@ -8,6 +8,7 @@ import { api, SessionRecorder } from './recording';
 import { pollAdaptation, type AdaptationView } from './adaptationPolling';
 import { relationshipNames } from '../shared/characterState';
 import { turnPipeline } from './turnPipeline';
+import { DatingReview } from './DatingReview';
 import { loadTrees, saveTrees } from './treeStorage';
 
 /** Phone trees are kept apart from the lab's, so two open tabs never overwrite each other. */
@@ -63,6 +64,7 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
   // A line typed before the date has joined; sent as soon as it is ready.
   const pendingText = useRef<string | null>(null);
   const [liveSession, setLiveSession] = useState<string | null>(null);
+  const [reviewGeneration, setReviewGeneration] = useState(0);
   const [scores, setScores] = useState<AdaptationView | null>(null); const [evaluating, setEvaluating] = useState(false);
   const treesRef = useRef(trees); treesRef.current = trees;
   const client = useRef<HiggsClient | null>(null); const state = useRef<Conversation>(emptyConversation());
@@ -71,7 +73,16 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
   // The breakpoint the current session continues from; its live lines hang under it in the tree.
   const live = useRef<{ baseId: string | null; sessionId?: string } | null>(null);
   const seeds = useRef<ProtocolEvent[]>([]);
+  const replayHistory = useRef<ReturnType<typeof branchHistory>>([]);
+  const [pulse, setPulse] = useState(0);
   const timeline = useRef<HTMLDivElement>(null);
+  const sheet = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!evaluating) return;
+    const previous = document.activeElement as HTMLElement | null;
+    sheet.current?.focus();
+    return () => previous?.focus();
+  }, [evaluating]);
 
   useEffect(() => {
     const meta = document.querySelector('meta[name="theme-color"]'); const previous = meta?.getAttribute('content');
@@ -87,10 +98,21 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
     const c = new HiggsClient({
       bootstrap: async signal => {
         const previous = recorder.current;
-        if (previous && !previous.synced) await previous.flush();
+        if (previous) {
+          const deadline = AbortSignal.any([signal, AbortSignal.timeout(10000)]);
+          while (!previous.synced) {
+            deadline.throwIfAborted(); await previous.flush();
+            if (!previous.synced) await new Promise<void>((resolve, reject) => {
+              const stop = () => { clearTimeout(timer); reject(deadline.reason); };
+              const timer = setTimeout(() => { deadline.removeEventListener('abort', stop); resolve(); }, 100);
+              deadline.addEventListener('abort', stop, { once: true });
+              if (deadline.aborted) stop();
+            });
+          }
+        }
         return api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({
           scenarioId: EMBER_DATE, partner: brief, user: myProfile(), mode: 'adaptive',
-          history: branchHistory(pathTo(treesRef.current[scenarioId] ?? emptyTree(), live.current?.baseId ?? null)) }) });
+          history: replayHistory.current }) });
       },
       seed: () => seeds.current,
       // An outgoing date opens, but only when nothing has been said yet on this path.
@@ -184,7 +206,8 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
   function join(withMic: boolean) {
     const current = treesRef.current[scenarioId] ?? emptyTree();
     setError(null); armMic.current = withMic;
-    live.current = { baseId: current.headId }; seeds.current = seedEvents(pathTo(current, current.headId));
+    const path = pathTo(current, current.headId);
+    live.current = { baseId: current.headId }; seeds.current = seedEvents(path); replayHistory.current = branchHistory(path);
     void client.current?.connect();
   }
   async function onMic() {
@@ -208,7 +231,8 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
     if (client.current?.sendText(text)) setDraft('');
   }
   /** Go back to just before you said this line, then carry on in a fresh session from there. */
-  async function rewindTo(nodeId: string) {
+  async function rewindTo(nodeId: string, practice = false) {
+    if (treesRef.current[scenarioId]?.nodes[nodeId]?.role !== 'user') return;
     const wasLive = LIVE.includes(client.current?.connectionState ?? 'idle'); const hadMic = mic;
     setPicked(null); setMenu(false); setDraft('');
     if (wasLive) await client.current?.disconnect();
@@ -216,14 +240,21 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
     const head = revertTo(treesRef.current[scenarioId] ?? emptyTree(), nodeId).headId;
     setTrees(t => ({ ...t, [scenarioId]: { ...(t[scenarioId] ?? emptyTree()), headId: head } }));
     treesRef.current = { ...treesRef.current, [scenarioId]: { ...(treesRef.current[scenarioId] ?? emptyTree()), headId: head } };
-    if (wasLive) join(hadMic);
+    if (wasLive || practice) join(practice ? false : hadMic);
   }
   function undo() { const lastLine = breakpoints.at(-1); if (lastLine) void rewindTo(lastLine.id); }
   async function startOver() {
-    setMenu(false); setPicked(null);
+    setMenu(false); setPicked(null); setEvaluating(false);
+    pendingText.current = null; armMic.current = false;
     if (LIVE.includes(client.current?.connectionState ?? 'idle')) await client.current?.disconnect();
-    live.current = null; seeds.current = [];
-    setTrees(t => { const { [scenarioId]: _removed, ...rest } = t; return rest; });
+    live.current = null; seeds.current = []; replayHistory.current = [];
+    sessionId.current = null; setLiveSession(null); setScores(null);
+    // Remounting also aborts any review still arriving for the previous date.
+    setReviewGeneration(value => value + 1);
+    const previous = treesRef.current[scenarioId];
+    setStars(values => values.filter(id => !previous?.nodes[id]));
+    const { [scenarioId]: _removed, ...rest } = treesRef.current;
+    treesRef.current = rest; setTrees(rest);
   }
   async function leave() {
     armMic.current = false; await client.current?.disconnect(); await recorder.current?.flush();
@@ -235,9 +266,36 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
     setPicked(id);
   }
 
+  async function pauseReview() {
+    pendingText.current = null; armMic.current = false;
+    await client.current?.disconnect();
+    await recorder.current?.flush();
+  }
+  function viewReviewTurn(id: string, headId: string) {
+    const current = treesRef.current[scenarioId];
+    if (!current?.nodes[id] || !pathTo(current, headId).some(n => n.id === id)) return;
+    const next = { ...current, headId };
+    treesRef.current = { ...treesRef.current, [scenarioId]: next };
+    setTrees(treesRef.current); setEvaluating(false); setPicked(id); setPulse(n => n + 1);
+    requestAnimationFrame(() => document.getElementById(`turn-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }));
+  }
+  function onSheetKey(event: KeyboardEvent) {
+    if (event.key === 'Escape') setEvaluating(false);
+    if (event.key !== 'Tab') return;
+    const controls = [...(sheet.current?.querySelectorAll<HTMLElement>('button:not(:disabled), summary, [tabindex="0"]') ?? [])]
+      .filter(el => el.getClientRects().length);
+    const first = controls[0], last = controls.at(-1);
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === sheet.current)) {
+      event.preventDefault(); last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
   function evaluate() {
     setMenu(false); setPicked(null); setEvaluating(true);
-    if (liveSession && !ready) void api<AdaptationView>(`/api/sessions/${liveSession}/adaptation`).then(setScores).catch(() => {});
+    if (liveSession && !ready) {
+      const id = liveSession;
+      void api<AdaptationView>(`/api/sessions/${id}/adaptation`)
+        .then(data => { if (sessionId.current === id) setScores(data); }).catch(() => {});
+    }
   }
 
   const relationship = scores?.states.at(-1)?.relationship;
@@ -265,7 +323,7 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
             {photo ? <img src={photo} alt="" /> : <div className="pw-fallback">{name[0]}</div>}
           </div>
 
-          <div className="pw-app">
+          <div className="pw-app" inert={evaluating}>
             <header className="pw-top">
               <button type="button" className="pw-nav" aria-label={`Back to ${name}'s profile`} onClick={() => { void leave(); }}><Icon d={ICONS.back} /></button>
               <div className="pw-title">
@@ -285,7 +343,7 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
             </header>
 
             <main className="pw-stage" onClick={() => { setPicked(null); setMenu(false); }}>
-              <div className={`pw-caption ${pickedNode ? 'is-past' : ''}`} aria-live="polite">
+              <div key={pulse} className={`pw-caption ${picked ? 'pw-pulse' : ''} ${pickedNode ? 'is-past' : ''}`} aria-live="polite">
                 <small>{pickedNode ? 'You said, at this point' : speaker}{!pickedNode && status && <em> · {status}</em>}</small>
                 <p>{caption}</p>
               </div>
@@ -295,7 +353,7 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
                   {breakpoints.map((node, index) => {
                     const starred = stars.includes(node.id); const on = picked === node.id;
                     return (
-                      <button type="button" key={node.id} className={`pw-dot ${starred ? 'is-star' : ''} ${on ? 'is-picked' : ''}`}
+                      <button type="button" key={node.id} id={`turn-${node.id}`} className={`pw-dot ${starred ? 'is-star' : ''} ${on ? 'is-picked' : ''}`}
                         aria-label={`${on ? 'Rewind to before' : 'Show'} line ${index + 1}: ${short(node.text)}`} disabled={busy} onClick={() => pick(node.id)}>
                         {on && <span className="pw-tip">{starred ? 'Worth exploring' : `Line ${index + 1}`}</span>}
                         {on ? <Icon d={ICONS.rewind} className="pw-icon pw-rewind" /> : starred ? <Icon d={ICONS.star} className="pw-icon pw-star" /> : null}
@@ -335,11 +393,15 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
             </footer>
           </div>
 
-          {evaluating && (
-            <div className="pw-sheet-root" onClick={() => setEvaluating(false)}>
-              <div className="pw-sheet" role="dialog" aria-modal="true" aria-labelledby="pw-eval-title" onClick={event => event.stopPropagation()}>
+          {(
+            <div className="pw-sheet-root" style={{ display: evaluating ? undefined : 'none' }} onKeyDown={onSheetKey} onClick={() => setEvaluating(false)}>
+              <div ref={sheet} tabIndex={-1} className="pw-sheet" role="dialog" aria-modal="true" aria-labelledby="pw-eval-title" onClick={event => event.stopPropagation()}>
                 <div className="pw-grab" />
-                <h2 id="pw-eval-title">How {name} feels so far</h2>
+                <h2 id="pw-eval-title">Your date with {name}</h2>
+                <DatingReview key={reviewGeneration} path={path} busy={inSession} scenarioId={scenarioId} partner={brief}
+                  onPause={() => void pauseReview()} onView={viewReviewTurn}
+                  onPractice={id => { setEvaluating(false); void rewindTo(id, true); }} />
+                <details className="pw-feelings"><summary>How {name} feels so far</summary>
                 {relationship ? <>
                   {relationshipNames.map(key => (
                     <div className="pw-meter" key={key}>
@@ -349,7 +411,7 @@ export function PhoneDate({ brief }: { brief: PartnerBrief }) {
                   <p>Right now she seems <strong>{mood}</strong>.{relationship.lastShift && <> The last thing that moved her: {relationship.lastShift.event.replace(/_/g, ' ')}{relationship.lastShift.major ? ' (a big shift)' : ''}.</>}</p>
                   {stars.some(id => breakpoints.some(b => b.id === id)) && <p>★ on the timeline marks the lines that shifted her most. They are worth rewinding to.</p>}
                 </> : <p>Talk with {name} first. Her feelings update after each thing you say.</p>}
-                <p className="pw-fine">Simulation scores from 0 to 100, not real emotions.</p>
+                <p className="pw-fine">Simulation scores from 0 to 100, not real emotions.</p></details>
                 <button type="button" className="pw-done" onClick={() => setEvaluating(false)}>Done</button>
               </div>
             </div>

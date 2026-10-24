@@ -1062,6 +1062,8 @@ function onPointerUp(event) {
   const { card, dx, dy } = gesture;
   gesture = null;
   suppressClick = true;
+  // Opening a profile replaces the tapped card, so its click may never bubble.
+  setTimeout(() => { suppressClick = false; }, 0);
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
   if (absX < 12 && absY < 12) {
