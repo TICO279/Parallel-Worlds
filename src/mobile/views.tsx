@@ -3,7 +3,8 @@ import type { ComparisonResult, TimelineNode } from '../../client';
 import type { ConversationProps, DiscoverProps, MobileState, ProfileProps } from './types';
 import './mobile.css';
 
-const PHOTO = '/mobile/photos/alex.jpg';
+// Alex's displayed portrait is selected independently of the imported asset's source name.
+const PHOTO = '/mobile/photos/maya.jpg';
 const short = (text: string, length = 90) => text.length > length ? `${text.slice(0, length - 1).trimEnd()}…` : text;
 const glyphs = {
   back: 'M15 5l-7 7 7 7',

@@ -1,9 +1,14 @@
 {
-  "name": "Ember",
-  "short_name": "Ember",
+  "id": "/",
+  "name": "Parallel Worlds",
+  "short_name": "Worlds",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ff4b68",
-  "theme_color": "#ff4b68"
+  "theme_color": "#ff4b68",
+  "icons": [
+    {"src": "/mobile/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/mobile/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
 }

@@ -11,7 +11,11 @@ the timeline, suggested rewind, Undo and Evaluate use the existing Phase 3 API. 
 the original and one alternative are shown. The existing conversation lab remains at
 `/lab` (also `/?lab`), and the Phase 3 test harness remains at `/phase3`.
 See the [integration and verification guide](docs/mobile-frontend-integration.md).
-**309 tests pass**, with type checking and production build passing. The voice journey
+For testing on an iPhone over the same Wi-Fi, use the
+[Safari/HTTPS phone setup](docs/iphone-testing.md) and `pnpm phone`; no App Store
+build is needed. The phone setup keeps the backend on localhost.
+**318 tests pass**, including the private iPhone gateway checks, with type checking
+and production build passing. The voice journey
 is covered with synthetic events against the real local API/SQLite; live Boson setup
 reached ready, but microphone capture failed in this browser. Actual spoken conversation
 and physical-device audio verification remain pending.

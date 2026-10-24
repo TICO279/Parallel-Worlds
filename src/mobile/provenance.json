@@ -1,6 +1,7 @@
 {
   "sourceRef": "origin/main2",
   "sourceCommit": "3781fed7213e8042c77f90ee61e7f8ca95a55813",
+  "displayedPortraits": {"alex": "/mobile/photos/maya.jpg"},
   "photoAssets": [
     {
       "sourcePath": "dating/photos/alex.jpg",

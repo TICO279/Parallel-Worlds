@@ -35,7 +35,10 @@ describe('preferred mobile frontend presentation',()=>{
     for(const unsupported of ['Amara','Elena','Devin','Sofia','Leo','Maya','Grad student','Toronto','miles away']) {
       expect(discover).not.toContain(unsupported);expect(card).not.toContain(unsupported);
     }
-    expect(card).toContain('/mobile/photos/alex.jpg');
+    expect(card).toContain('/mobile/photos/maya.jpg');
+    expect(discover).toContain('/mobile/photos/maya.jpg');
+    expect(renderConversation(state())).toContain('/mobile/photos/maya.jpg');
+    expect(card).not.toContain('/mobile/photos/alex.jpg');
   });
   it('keeps the profile and conversation flows free of text composers and emotional dashboards',()=>{
     const views=[renderToStaticMarkup(<DiscoverView state={state()} onProfile={noop} onResume={noop} onRefresh={noop}/>),
