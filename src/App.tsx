@@ -16,7 +16,7 @@ export function App() {
   const [connection, setConnection] = useState<ConnectionState>('idle'); const [activity, setActivity] = useState<Activity>('idle');
   const [mic, setMic] = useState(false); const [level, setLevel] = useState(0); const [micBusy, setMicBusy] = useState(false);
   const [error, setError] = useState<string | null>(null); const [recording, setRecording] = useState<string | null>(null);
-  const [session, setSession] = useState<StoredSession | null>(null);
+  const [session, setSession] = useState<StoredSession | null>(null); const [confirmRestart, setConfirmRestart] = useState(false);
   const [trees, setTrees] = useState<Record<string, ConversationTree>>(loadTrees); const [selectedLine, setSelectedLine] = useState<string | null>(null);
   const treesRef = useRef(trees); treesRef.current = trees;
   // The tree node that was HEAD when the current session started; its live turns hang under it.
@@ -130,6 +130,16 @@ export function App() {
   function revert(id: string) { setTrees(t => ({ ...t, [selected]: revertTo(t[selected] ?? emptyTree(), id) })); setSelectedLine(null); }
   function clearTree() { setTrees(t => { const { [selected]: _removed, ...rest } = t; return rest; }); setSelectedLine(null);
     if (session?.scenarioId === selected) { setSession(null); setAdaptation(null); setLatency(null); setAdaptationNotice(null); setPollError(null); } }
+  /** Erase this scenario's conversation (tree, transcript, scores) and return to a fresh start. Asks for a second click. */
+  async function startOver() {
+    if (!confirmRestart) { setConfirmRestart(true); return; }
+    setConfirmRestart(false);
+    // End a live conversation first so its last events are recorded before everything is erased.
+    if (client.current && ['ready', 'connecting', 'closing'].includes(client.current.connectionState)) await client.current.disconnect();
+    state.current = emptyConversation(); live.current = null; seeds.current = [];
+    clearTree(); setSession(null); setAdaptation(null); setLatency(null); setAdaptationNotice(null); setPollError(null);
+    setDraft(''); setError(null); setRecording(null);
+  }
   async function exportConversation() {
     if (!Object.keys(tree.nodes).length && !session) return;
     setExporting(true);
@@ -186,6 +196,9 @@ export function App() {
                 : path.length ? `${name} remembers the conversation so far. Type, or enable your microphone, to carry on.` : 'Type a message, or enable your microphone and say hello.'
                 : atFork ? `The completed dialogue up to this point will be replayed. Say something different this time.`
                 : path.length ? 'Click one of your own lines to revert to that point.' : 'A live voice conversation, at your own pace.'}</p>
+              {(Object.keys(tree.nodes).length > 0 || busy || shownSession) && <button className={`restart-button ${confirmRestart ? 'confirm' : ''}`}
+                disabled={connection === 'closing'} onClick={() => void startOver()} onBlur={() => setConfirmRestart(false)}>
+                {confirmRestart ? `Click again to erase this conversation with ${name} and start over` : '↺ Start over'}</button>}
             </div>
           </section>
           <section className={`transcript-card ${Object.keys(tree.nodes).length ? 'has-tree' : ''}`} aria-labelledby="transcript-title">
