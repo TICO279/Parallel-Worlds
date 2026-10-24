@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Scenario, StoredSession, Turn } from '../shared/domain';
 import type { CompletedTurnListener } from './orchestrator';
 import { ApiError } from './higgs';
+import type { AdaptationData } from '../shared/characterState';
 const fail = () => { throw new ApiError(400, 'Invalid conversation snapshot.'); };
 /** Explicit allowlist prevents credentials or arbitrary protocol payloads entering exports. */
 export function parseTurns(raw: unknown): Turn[] {
@@ -29,7 +30,14 @@ export function parseTurns(raw: unknown): Turn[] {
 export class ConversationStore {
   private sessions = new Map<string, StoredSession>();
   private notified = new Set<string>();
+  private listeners: CompletedTurnListener[] = [];
   constructor(private completed?: CompletedTurnListener) {}
+  subscribe(listener: CompletedTurnListener) { this.listeners.push(listener); }
+  setAdaptation(id: string, data: AdaptationData) {
+    const session = this.sessions.get(id);
+    if (!session) throw new ApiError(404, 'Session not found.');
+    session.adaptation = structuredClone(data); session.updatedAt = Date.now();
+  }
   create(scenario: Scenario): StoredSession {
     const now = Date.now(); const s: StoredSession = { schemaVersion: 1, id: randomUUID(), scenarioId: scenario.id,
       characterId: scenario.character.id, status: 'connecting', createdAt: now, updatedAt: now, revision: 0, turns: [] };
@@ -60,6 +68,9 @@ export class ConversationStore {
       if (t.transcriptFinal && !this.notified.has(key)) {
         this.notified.add(key);
         try { this.completed?.(id, Object.freeze(structuredClone(t))); } catch { /* observers never break recording */ }
+        for (const listener of this.listeners) {
+          try { listener(id, Object.freeze(structuredClone(t))); } catch { /* async observers handle their own failures */ }
+        }
       }
     }
     return structuredClone(s);

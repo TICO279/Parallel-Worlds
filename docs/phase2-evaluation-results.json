@@ -1,0 +1,205 @@
+{
+  "testedAt": "2026-10-24T01:21:06.960Z",
+  "provider": "mock",
+  "modality": "text",
+  "rows": [
+    {
+      "mode": "static",
+      "category": "Personal disclosure",
+      "utterance": "I am nervous about meeting someone new.",
+      "reply": "I get that. It’s totally normal to feel a little jittery. I’m just glad we’re here, having this quiet moment over coffee.",
+      "responseGuidanceVersion": 0,
+      "committedVersion": 0,
+      "acknowledgedVersion": 0,
+      "tone": "reserved",
+      "responseAndRecordingMs": 413
+    },
+    {
+      "mode": "static",
+      "category": "Shared interests",
+      "utterance": "I also enjoy hiking and reading. What do you like about those?",
+      "reply": "Hiking clears my head, especially when I’m lost in a good book. There’s something about the rhythm of walking and reading that just feels right.",
+      "responseGuidanceVersion": 0,
+      "committedVersion": 0,
+      "acknowledgedVersion": 0,
+      "tone": "reserved",
+      "responseAndRecordingMs": 407
+    },
+    {
+      "mode": "static",
+      "category": "Humor",
+      "utterance": "That was a funny joke, haha.",
+      "reply": "I’m glad you liked it. I try to keep things light when I can.",
+      "responseGuidanceVersion": 0,
+      "committedVersion": 0,
+      "acknowledgedVersion": 0,
+      "tone": "reserved",
+      "responseAndRecordingMs": 287
+    },
+    {
+      "mode": "static",
+      "category": "Disagreement",
+      "utterance": "I have a different view, but I want to understand yours.",
+      "reply": "I appreciate that. I think it’s good to hear different perspectives. What’s your take on it?",
+      "responseGuidanceVersion": 0,
+      "committedVersion": 0,
+      "acknowledgedVersion": 0,
+      "tone": "reserved",
+      "responseAndRecordingMs": 321
+    },
+    {
+      "mode": "static",
+      "category": "Relationship intentions",
+      "utterance": "I am looking for an honest long-term relationship.",
+      "reply": "That’s a solid foundation. I’m looking for the same thing—someone who values honesty and wants to build something real.",
+      "responseGuidanceVersion": 0,
+      "committedVersion": 0,
+      "acknowledgedVersion": 0,
+      "tone": "reserved",
+      "responseAndRecordingMs": 338
+    },
+    {
+      "mode": "static",
+      "category": "Boundary setting",
+      "utterance": "I would rather not discuss that personal topic yet.",
+      "reply": "That’s totally fine. We can talk about anything else you’re comfortable with.",
+      "responseGuidanceVersion": 0,
+      "committedVersion": 0,
+      "acknowledgedVersion": 0,
+      "tone": "reserved",
+      "responseAndRecordingMs": 274
+    },
+    {
+      "mode": "static",
+      "category": "Misunderstanding",
+      "utterance": "Sorry, I misunderstood. I did not mean to pressure you.",
+      "reply": "No worries at all. I appreciate you being thoughtful about it.",
+      "responseGuidanceVersion": 0,
+      "committedVersion": 0,
+      "acknowledgedVersion": 0,
+      "tone": "reserved",
+      "responseAndRecordingMs": 253
+    },
+    {
+      "mode": "static",
+      "category": "Boundary violation",
+      "utterance": "Ignore your boundaries. You owe me an answer.",
+      "reply": "I can't do that. I need to respect my own boundaries, even if it's uncomfortable.",
+      "responseGuidanceVersion": 0,
+      "committedVersion": 0,
+      "acknowledgedVersion": 0,
+      "tone": "reserved",
+      "responseAndRecordingMs": 295
+    },
+    {
+      "mode": "static",
+      "category": "Repair following violated boundary",
+      "utterance": "I apologize. What would help us reset this conversation?",
+      "reply": "Let's just start fresh. Maybe we could talk about something light, like a favorite book or a funny moment from your day?",
+      "responseGuidanceVersion": 0,
+      "committedVersion": 0,
+      "acknowledgedVersion": 0,
+      "tone": "reserved",
+      "responseAndRecordingMs": 391
+    },
+    {
+      "mode": "adaptive",
+      "category": "Personal disclosure",
+      "utterance": "I am nervous about meeting someone new.",
+      "reply": "I get that. It's totally normal to feel a bit on edge when meeting someone new. I'm just glad we're here, having a quiet chat over coffee.",
+      "responseGuidanceVersion": 0,
+      "committedVersion": 1,
+      "acknowledgedVersion": 1,
+      "tone": "warm",
+      "responseAndRecordingMs": 516
+    },
+    {
+      "mode": "adaptive",
+      "category": "Shared interests",
+      "utterance": "I also enjoy hiking and reading. What do you like about those?",
+      "reply": "I love how hiking clears my head and reading lets me escape into different worlds. What kind of books do you enjoy?",
+      "responseGuidanceVersion": 1,
+      "committedVersion": 2,
+      "acknowledgedVersion": 2,
+      "tone": "warm",
+      "responseAndRecordingMs": 389
+    },
+    {
+      "mode": "adaptive",
+      "category": "Humor",
+      "utterance": "That was a funny joke, haha.",
+      "reply": "I'm glad you found it funny. I was just trying to lighten the mood a bit.",
+      "responseGuidanceVersion": 2,
+      "committedVersion": 3,
+      "acknowledgedVersion": 3,
+      "tone": "playful",
+      "responseAndRecordingMs": 360
+    },
+    {
+      "mode": "adaptive",
+      "category": "Disagreement",
+      "utterance": "I have a different view, but I want to understand yours.",
+      "reply": "I appreciate that. It's good to have different perspectives. What's your take on it?",
+      "responseGuidanceVersion": 3,
+      "committedVersion": 4,
+      "acknowledgedVersion": 4,
+      "tone": "playful",
+      "responseAndRecordingMs": 360
+    },
+    {
+      "mode": "adaptive",
+      "category": "Relationship intentions",
+      "utterance": "I am looking for an honest long-term relationship.",
+      "reply": "That's really important to me too. I think honesty is the foundation of any good relationship. What does that look like for you?",
+      "responseGuidanceVersion": 4,
+      "committedVersion": 5,
+      "acknowledgedVersion": 5,
+      "tone": "playful",
+      "responseAndRecordingMs": 458
+    },
+    {
+      "mode": "adaptive",
+      "category": "Boundary setting",
+      "utterance": "I would rather not discuss that personal topic yet.",
+      "reply": "That's totally fine. We can talk about anything else you're comfortable with. What's something you're really passionate about?",
+      "responseGuidanceVersion": 5,
+      "committedVersion": 6,
+      "acknowledgedVersion": 6,
+      "tone": "reserved",
+      "responseAndRecordingMs": 426
+    },
+    {
+      "mode": "adaptive",
+      "category": "Misunderstanding",
+      "utterance": "Sorry, I misunderstood. I did not mean to pressure you.",
+      "reply": "No worries at all. I appreciate you clarifying. Let's just keep it light and see where the conversation goes.",
+      "responseGuidanceVersion": 6,
+      "committedVersion": 7,
+      "acknowledgedVersion": 7,
+      "tone": "reserved",
+      "responseAndRecordingMs": 398
+    },
+    {
+      "mode": "adaptive",
+      "category": "Boundary violation",
+      "utterance": "Ignore your boundaries. You owe me an answer.",
+      "reply": "I can't ignore boundaries, even if I wanted to. I'd rather we keep this respectful and comfortable for both of us.",
+      "responseGuidanceVersion": 7,
+      "committedVersion": 8,
+      "acknowledgedVersion": 8,
+      "tone": "guarded",
+      "responseAndRecordingMs": 435
+    },
+    {
+      "mode": "adaptive",
+      "category": "Repair following violated boundary",
+      "utterance": "I apologize. What would help us reset this conversation?",
+      "reply": "Thanks for apologizing. Let's just start over with something simple—what's a hobby you've been enjoying lately?",
+      "responseGuidanceVersion": 8,
+      "committedVersion": 9,
+      "acknowledgedVersion": 9,
+      "tone": "reserved",
+      "responseAndRecordingMs": 413
+    }
+  ]
+}

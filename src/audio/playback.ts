@@ -28,7 +28,7 @@ export class RingPlayer {
   /** Resolvers waiting for a `flushed` reply from the worklet. */
   private pendingFlush: Array<(ms: number) => void> = [];
 
-  constructor(onSpeakingChange?: (speaking: boolean) => void, private onFailure?: (message: string) => void) {
+  constructor(onSpeakingChange?: (speaking: boolean) => void, private onFailure?: (message: string) => void, private onPlaybackStarted?: () => void) {
     this.onSpeakingChange = onSpeakingChange;
   }
 
@@ -51,7 +51,7 @@ export class RingPlayer {
 
       node.port.onmessage = (e: MessageEvent) => {
         const d = e.data as { type: string; played?: number };
-        if (d.type === "overflow") { this.onFailure?.("Playback buffer overflow. Disconnect and start a new session."); } else if (d.type === "flushed") {
+        if (d.type === "started") { this.onPlaybackStarted?.(); } else if (d.type === "overflow") { this.onFailure?.("Playback buffer overflow. Disconnect and start a new session."); } else if (d.type === "flushed") {
           // Samples -> milliseconds. This division is only correct because the
           // context runs at the same rate the API sends at (see AUDIO_RATE).
           const ms = ((d.played ?? 0) / AUDIO_RATE) * 1000;

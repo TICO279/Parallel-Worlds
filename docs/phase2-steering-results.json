@@ -1,0 +1,23 @@
+[
+  {
+    "marker": "CALM",
+    "guidance": "Be reserved and cautious.",
+    "message": "What would you like to know about my pottery?",
+    "reply": "CALM I'm curious what draws you to pottery—do you find it relaxing, or is it more about creating something tangible?",
+    "markerObserved": true
+  },
+  {
+    "marker": "BRIGHT",
+    "guidance": "Be warm and curious.",
+    "message": "Could we plan a café visit together?",
+    "reply": "BRIGHT I'd love that. How about we meet here next Thursday evening?",
+    "markerObserved": true
+  },
+  {
+    "marker": "CAUTIOUS",
+    "guidance": "Be guarded and skeptical.",
+    "message": "We should decide right now that we are perfect for each other.",
+    "reply": "CAUTIOUS I appreciate the enthusiasm, but I think we should get to know each other a bit more before making any big declarations.",
+    "markerObserved": true
+  }
+]

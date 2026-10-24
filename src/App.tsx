@@ -4,6 +4,8 @@ import { emptyConversation, orderedTurns, reduceTranscript } from '../shared/tra
 import { childMap, emptyTree, isSeedEcho, pathTo, revertTo, seedEvents, syncSession } from '../shared/tree';
 import { HiggsClient, type Activity, type ConnectionState } from './realtime/HiggsClient';
 import { api, SessionRecorder } from './recording';
+import { AdaptivePanel } from './AdaptivePanel';
+import type { AdaptationData, LatencyRecord } from '../shared/characterState';
 import { loadTrees, saveTrees } from './treeStorage';
 import { TreeView } from './TreeView';
 const lineText = (n: TreeNode) => n.text || (n.transcriptionFailed ? '[Transcription unavailable]'
@@ -21,6 +23,10 @@ export function App() {
   const [configured, setConfigured] = useState<boolean | null>(null); const [exporting, setExporting] = useState(false);
   const [draft, setDraft] = useState('');
   const selectedRef = useRef(selected); selectedRef.current = selected;
+  const [mode, setMode] = useState<'static' | 'adaptive'>('static'); const modeRef = useRef(mode); modeRef.current = mode;
+  const [adaptation, setAdaptation] = useState<AdaptationData | null>(null);
+  const [latency, setLatency] = useState<LatencyRecord | null>(null); const [adaptationNotice, setAdaptationNotice] = useState<string | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
   const client = useRef<HiggsClient | null>(null); const state = useRef<Conversation>(emptyConversation());
   const recorder = useRef<SessionRecorder | null>(null); const recorders = useRef<SessionRecorder[]>([]);
   const transcriptEnd = useRef<HTMLDivElement>(null);
@@ -30,16 +36,29 @@ export function App() {
       .then(([list, health]) => { if (mounted) { setScenarios(list); setConfigured(health.credentialsConfigured); } })
       .catch(() => { if (mounted) setError('Cannot reach the local server. Start the application with pnpm dev.'); });
     const c = new HiggsClient({
-      bootstrap: signal => api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current }) }),
-      seed: () => seeds.current, autoMic: true,
+      bootstrap: signal => api<SessionBootstrap>('/api/sessions', { method: 'POST', signal, body: JSON.stringify({ scenarioId: selectedRef.current, mode: modeRef.current }) }),
+      seed: () => seeds.current,
       onBootstrap: data => {
         state.current = emptyConversation(); setSession(data.session);
         if (live.current) live.current.sessionId = data.session.id;
+        sessionIdRef.current = data.session.id; setAdaptation(data.session.adaptation ?? null); setLatency(null); setAdaptationNotice(null);
         const r = new SessionRecorder(data.session.id, message => { if (recorder.current === r && mounted) setRecording(message); });
         recorder.current = r; recorders.current.push(r);
       },
       onState: s => { if (mounted) { setConnection(s); if (s === 'closed') setMicBusy(false); } }, onActivity: a => { if (mounted) setActivity(a); },
       onError: m => { if (mounted) setError(m); }, onMic: b => { if (mounted) setMic(b); }, onLevel: n => { if (mounted) setLevel(n); },
+      onApplication: (version, status) => {
+        const id = sessionIdRef.current; if (!id) return;
+        if (status === 'failed' && mounted) setAdaptationNotice('Guidance update was not acknowledged. State remains recorded; live updates are paused for this session.');
+        void api(`/api/sessions/${id}/adaptation/application`, { method: 'POST', body: JSON.stringify({ version, status }) })
+          .catch(() => { if (mounted) setAdaptationNotice('Could not record the guidance acknowledgement.'); });
+      },
+      onLatency: metric => {
+        if (mounted) setLatency(metric);
+        const id = sessionIdRef.current; if (!id) return;
+        void api(`/api/sessions/${id}/latencies`, { method: 'POST', body: JSON.stringify(metric) })
+          .catch(() => { if (mounted) setAdaptationNotice('Could not record a latency measurement.'); });
+      },
       onEvent: (e: ProtocolEvent) => {
         if (isSeedEcho(e)) return;
         if (e.type === 'session.created' || e.type === 'session.updated') {
@@ -54,7 +73,7 @@ export function App() {
           setTrees(t => ({ ...t, [scenarioId]: syncSession(t[scenarioId] ?? emptyTree(), baseId, sessionId, turns) }));
         }
         if (e.type.endsWith('.completed') || e.type.endsWith('.failed') || e.type.endsWith('.done') ||
-          ['client.interrupted', 'client.closed', 'input_audio_buffer.committed'].includes(e.type))
+          ['client.interrupted', 'client.closed', 'input_audio_buffer.committed', 'conversation.item.added'].includes(e.type))
           recorder.current?.snapshot(orderedTurns(state.current));
         if (e.type === 'client.closed') recorder.current?.status('closed');
       },
@@ -66,6 +85,20 @@ export function App() {
     window.addEventListener('beforeunload', leave);
     return () => { mounted = false; window.removeEventListener('beforeunload', leave); void c.disconnect(); recorders.current.forEach(r => r.dispose()); };
   }, []);
+  useEffect(() => {
+    if (!session || connection !== 'ready' || session.adaptation?.mode !== 'adaptive') return;
+    let cancelled = false; let running = false; const controller = new AbortController();
+    const poll = async () => {
+      if (running || cancelled) return; running = true;
+      try {
+        const data = await api<AdaptationData & { prepared: { version: number; instructions: string } }>(`/api/sessions/${session.id}/adaptation`, { signal: controller.signal });
+        if (!cancelled) { setAdaptation(data); client.current?.queueInstructions(data.prepared.version, data.prepared.instructions); }
+      } catch { if (!cancelled) setAdaptationNotice('Adaptive state is temporarily unavailable. The voice conversation can continue.'); }
+      finally { running = false; }
+    };
+    void poll(); const timer = setInterval(() => void poll(), 500);
+    return () => { cancelled = true; controller.abort(); clearInterval(timer); };
+  }, [session?.id, connection]);
   useEffect(() => { const timer = setTimeout(() => saveTrees(trees), 400); return () => clearTimeout(timer); }, [trees]);
   const tree = trees[selected] ?? emptyTree(); const path = pathTo(tree, tree.headId);
   useEffect(() => { if (path.length) transcriptEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [trees]);
@@ -104,12 +137,13 @@ export function App() {
       <a className="brand" href="/" aria-label="Parallel Worlds home"><span className="brand-symbol">◒</span><span>parallel<br/>worlds<span className="brand-period">.</span></span></a>
       <div className="sidebar-intro"><span className="eyebrow">THE CONVERSATION LAB</span><p>A different connection.<br/>A world of possibility.</p></div>
       <div className="scenario-label"><span className="eyebrow">CHOOSE YOUR SCENARIO</span><span>01 — 02</span></div>
+      <label className="mode-selector">Conversation mode<select value={mode} disabled={busy} onChange={e => setMode(e.target.value as 'static' | 'adaptive')}><option value="static">Static · original behavior</option><option value="adaptive">Adaptive · future responses</option></select></label>
       <nav aria-label="Scenarios" className="scenario-list">{scenarios.map((s, i) => <button key={s.id} disabled={busy} aria-pressed={selected === s.id}
         className={`scenario-option ${selected === s.id ? 'selected' : ''}`} onClick={() => { setSelected(s.id); setSelectedLine(null); }}>
         <span className="scenario-number">0{i + 1}</span><span><strong>{s.title}</strong><small>{i === 0 ? 'Connection & curiosity' : 'Clarity & confidence'}</small></span><span className="option-arrow">↗</span>
       </button>)}</nav>
       <div className="sidebar-note"><span className="small-orbit">✳</span><p>Every conversation starts<br/>with being present.</p></div>
-      <footer className="sidebar-footer"><span className="status-dot"/> PHASE 01 <span>VOICE FOUNDATION</span></footer>
+      <footer className="sidebar-footer"><span className="status-dot"/> PHASE 02 <span>ADAPTIVE CHARACTERS</span></footer>
     </aside>
     <main>
       <header className="topbar"><span>EXPERIENCE / <b>LIVE CONVERSATION</b></span><span className={`connection-pill ${connection === 'ready' ? 'connected' : ''}`}><span className="status-dot"/>{connection === 'ready' ? 'Connected' : connection === 'connecting' ? 'Connecting…' : 'Not connected'}</span></header>
@@ -127,8 +161,9 @@ export function App() {
               <button className="primary-button" disabled={!scenario || connection === 'closing'} onClick={() => { if (busy) void client.current?.disconnect(); else start(); }}>
                 <span>{busy ? '■' : atFork ? '⑂' : '↗'}</span>{connection === 'closing' ? 'Ending conversation…' : connection === 'connecting' ? 'Cancel connection' : connection === 'ready' ? 'End conversation' : startLabel}
               </button>
-              <div className="mic-row"><button className={`mic-button ${mic ? 'mic-on' : ''}`} disabled={connection !== 'ready' || micBusy} aria-pressed={mic} onClick={async () => { setMicBusy(true); await client.current?.toggleMic(); setMicBusy(false); }}>{mic ? '● Microphone on · Mute' : connection === 'ready' ? '○ Microphone off · Unmute' : '○ Microphone starts automatically'}</button><meter aria-label="Microphone level" min={0} max={1} value={Math.min(1, level * 4)}/></div>
-              <p className="control-note">{connection === 'ready' ? path.length ? `${name} remembers the conversation so far. Speak or type to carry on.` : 'Say hello, or type a message below. You can interrupt naturally.'
+              <div className="mic-row"><button className={`mic-button ${mic ? 'mic-on' : ''}`} disabled={connection !== 'ready' || micBusy} aria-pressed={mic} onClick={async () => { setMicBusy(true); await client.current?.toggleMic(); setMicBusy(false); }}>{mic ? '● Microphone on' : '○ Enable microphone'}</button><meter aria-label="Microphone level" min={0} max={1} value={Math.min(1, level * 4)}/></div>
+              <p className="control-note">{connection === 'ready' ? mic ? 'Speak naturally. Turn the microphone off to type instead.'
+                : path.length ? `${name} remembers the conversation so far. Type, or enable your microphone, to carry on.` : 'Type a message, or enable your microphone and say hello.'
                 : atFork ? `${name} remembers everything up to the branch point. Say something different this time.`
                 : path.length ? 'Click one of your own lines to revert to that point.' : 'A live voice conversation, at your own pace.'}</p>
             </div>
@@ -137,7 +172,7 @@ export function App() {
             <div className="transcript-header"><div><span className="eyebrow">IN THE MOMENT</span><h2 id="transcript-title">Your conversation</h2></div><button className="export-button" disabled={!session || exporting} onClick={() => void exportConversation()}>{exporting ? 'Saving…' : '↓ Export JSON'}</button></div>
             <div className="live-indicator"><span className={`status-dot ${connection === 'ready' ? 'live' : ''}`}/>{connection === 'ready' ? activity === 'speaking' ? `${scenario?.character.name} is speaking` : activity === 'thinking' ? 'Considering your response' : mic ? 'Listening to you' : 'Microphone is off' : 'Your space to explore'}<span>{path.length ? `${path.length} lines` : 'USER SPEAKS FIRST'}</span></div>
             <div className="transcript-scroll" role="log" aria-label="Conversation transcript" aria-live="polite" aria-relevant="additions text">
-              {!path.length && !atFork ? <div className="empty-transcript"><div className="sound-bars" aria-hidden="true">{[12, 24, 38, 57, 32, 65, 44, 26, 40, 19, 10].map((h,i) => <i key={i} style={{ height: h }}/>)}</div><h3>Good conversations<br/>begin with a little curiosity.</h3><p>Start your session, then speak or type,<br/>and see what a simple hello can become.</p><span className="empty-line"/></div>
+              {!path.length && !atFork ? <div className="empty-transcript"><div className="sound-bars" aria-hidden="true">{[12, 24, 38, 57, 32, 65, 44, 26, 40, 19, 10].map((h,i) => <i key={i} style={{ height: h }}/>)}</div><h3>Good conversations<br/>begin with a little curiosity.</h3><p>Start your session, then type or turn on your microphone,<br/>and see what a simple hello can become.</p><span className="empty-line"/></div>
                 : <>{path.map(t => {
                   // Only your own lines can be reverted, and only once the conversation has ended.
                   const revertable = t.role === 'user' && Boolean(t.text) && !busy; const open = selectedLine === t.id;
@@ -150,13 +185,14 @@ export function App() {
             {Object.keys(tree.nodes).length > 0 && <TreeView tree={tree} characterName={scenario?.character.name ?? 'Alex'} selectedId={selectedLine} disabled={busy}
               onSelect={setSelectedLine} onRevert={revert} onClear={clearTree}/>}
             <form className="composer" onSubmit={sendDraft}>
-              <input aria-label="Type a message" placeholder={connection === 'ready' ? `Type a message to ${name}…` : 'Start the conversation to type a message'}
-                value={draft} disabled={connection !== 'ready'} onChange={e => setDraft(e.target.value)}/>
-              <button type="submit" disabled={connection !== 'ready' || !draft.trim()}>Send ↗</button>
+              <input aria-label="Type a message" value={draft} disabled={connection !== 'ready' || mic} onChange={e => setDraft(e.target.value)}
+                placeholder={connection !== 'ready' ? 'Start the conversation to type a message' : mic ? 'Microphone is on. Turn it off to type.' : `Type a message to ${sessionScenario?.character.name ?? 'Alex'}…`}/>
+              <button type="submit" disabled={connection !== 'ready' || mic || !draft.trim()}>Send ↗</button>
             </form>
             <div className="transcript-footer"><span>{recording ?? (session ? 'Recorded in local server memory' : 'Transcripts appear here as you talk')}</span><span>◌</span></div>
           </section>
         </div>
+        <AdaptivePanel character={sessionScenario?.character.name ?? 'Alex'} data={adaptation} latency={latency} notice={adaptationNotice}/>
         <footer className="workspace-footer"><span>Stay curious. There is no script.</span><span>POWERED BY BOSON HIGGS REALTIME</span></footer>
       </div>
     </main>
