@@ -7,6 +7,7 @@ Start with the [project README](../README.md) for setup, the iPhone tunnel and h
 | Document | What it covers |
 | --- | --- |
 | [Mobile dating practice review](mobile-dating-review.md) | Evaluate feedback on the phone: how reviews are generated and validated, jumping to a line, retrying it |
+| [Conflict tuning](conflict-tuning.md) | Stronger provocation, persistent irritation, anger delivery and verification |
 
 ## Design history and evaluation
 

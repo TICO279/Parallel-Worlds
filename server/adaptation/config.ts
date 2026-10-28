@@ -1,4 +1,6 @@
 /** Per-turn quick check and voice emotion: DeepSeek (default), TypeSafe Jev, or keyword rules ('mock', no key). */
+export interface ConflictTuning { provocation: number; anger: number; }
+export const DEFAULT_CONFLICT_TUNING: Readonly<ConflictTuning> = { provocation: .8, anger: .8 };
 export interface DecisionConfig { provider: 'deepseek' | 'jev' | 'mock'; url: string; model: string; key?: string; timeoutMs: number; majorThreshold: number; }
 /** Higgs TTS 3 speaks the reply; the key is BOSON_API_KEY, passed separately. */
 export interface SpeechConfig { model: string; voice: string; timeoutMs: number; }
@@ -14,6 +16,7 @@ export interface AdaptationConfig {
   speech?: SpeechConfig;
   /** 'major_shift': DeepSeek appraises only lines the decision model flags. 'every_turn': the earlier asynchronous mode. */
   appraisalTrigger?: 'every_turn' | 'major_shift';
+  conflict?: ConflictTuning;
 }
 function numberSetting(raw: string | undefined, fallback: number, low: number, high: number, name: string) {
   const value = raw === undefined || raw === '' ? fallback : Number(raw);
@@ -35,6 +38,8 @@ export function adaptationConfig(inherited: Record<string, string | undefined>, 
     throw new Error('OpenAI appraisal requires APPRAISAL_OPENAI_PROJECT_KEY=true and your project OPENAI_API_KEY.');
   if (provider === 'deepseek' && !env.DEEPSEEK_API_KEY?.trim()) throw new Error('DeepSeek appraisal requires your project DEEPSEEK_API_KEY.');
   return { provider, model: env.APPRAISAL_MODEL?.trim() || (provider === 'openai' ? 'gpt-6-luna' : 'deepseek-flash'),
+    conflict: { provocation: numberSetting(env.CHARACTER_PROVOCATION, DEFAULT_CONFLICT_TUNING.provocation, 0, 1, 'CHARACTER_PROVOCATION'),
+      anger: numberSetting(env.CHARACTER_ANGER, DEFAULT_CONFLICT_TUNING.anger, 0, 1, 'CHARACTER_ANGER') },
     memoryCapacity: integerSetting(env.CHARACTER_MEMORY_CAPACITY, 8, 1, 32, 'CHARACTER_MEMORY_CAPACITY'),
     memoryTextLimit: integerSetting(env.CHARACTER_MEMORY_TEXT_LIMIT, 160, 40, 160, 'CHARACTER_MEMORY_TEXT_LIMIT'),
     maxOutputTokens: integerSetting(env.APPRAISAL_MAX_OUTPUT_TOKENS, 1600, 600, 4000, 'APPRAISAL_MAX_OUTPUT_TOKENS'),

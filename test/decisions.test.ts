@@ -9,6 +9,7 @@ import type { AppraisalProvider } from '../server/adaptation/providers';
 import { MockAppraisalProvider } from '../server/adaptation/providers';
 import { ConversationStore } from '../server/store';
 import { buildContext, scenarios } from '../server/orchestrator';
+import { adaptationConfig, type ConflictTuning } from '../server/adaptation/config';
 
 const alex = scenarios[0].character;
 const zero = Object.fromEntries(relationshipNames.map(n => [n, 0])) as Record<typeof relationshipNames[number], number>;
@@ -40,12 +41,36 @@ describe('relationship indicators', () => {
     expect(chooseVoiceEmotion({ neutral: .7, bitterness: .3 }, { ...base, warmth: -.35 }).emotion).toBe('anger');
     expect(chooseVoiceEmotion({ neutral: .7, bitterness: .3 }, { ...base, warmth: -.1 }).emotion).toBe('neutral');
   });
-  it('lets tension fade by about half every three ordinary lines and stays in bounds', () => {
+  it('lets tension fade by about half over six ordinary lines with the stronger default anger and stays in bounds', () => {
     let r: Relationship = { ...base, tension: .8 };
-    for (let i = 0; i < 3; i++) r = updateRelationship(r, { nudges: zero, behavior: 0, event: 'neutral', major: false, turnId: `u${i}` });
-    expect(r.tension).toBeCloseTo(.4, 2);
+    for (let i = 0; i < 6; i++) r = updateRelationship(r, { nudges: zero, behavior: 0, event: 'neutral', major: false, turnId: `u${i}` });
+    expect(r.tension).toBeCloseTo(.4, 1);
     const extreme = updateRelationship({ ...base, respect: .01 }, { nudges: { ...zero, respect: -100 }, behavior: 0, event: 'insult', major: true, turnId: 'x' });
     expect(extreme.respect).toBeGreaterThanOrEqual(0);
+  });
+  it('keeps repeated hurt unresolved after one apology but permits gradual recovery',()=>{
+    const insult={nudges:zero,behavior:0,event:'insult',major:true,turnId:'u1'};
+    const first=updateRelationship(base,insult),second=updateRelationship(first,{...insult,turnId:'u2'});
+    expect(second.tension).toBeGreaterThan(first.tension);
+    let repaired=updateRelationship(second,{nudges:zero,behavior:0,event:'apology',major:false,turnId:'u3'});
+    expect(repaired.tension).toBeGreaterThan(.5);expect(describeRelationship(repaired)).toContain('visibly irritated');
+    for(let i=0;i<30;i++)repaired=updateRelationship(repaired,{nudges:zero,behavior:.9,event:'respectful_action',major:false,turnId:`repair${i}`});
+    expect(repaired.tension).toBeLessThan(.1);
+    expect(updateRelationship(base,{nudges:zero,behavior:0,event:'disagreement',major:false,turnId:'ordinary'}).tension).toBe(0);
+  });
+  it('lets anger strength affect plausible voice choices without inventing anger in a calm scene',()=>{
+    const options={neutral:.85,anger:.15},mood={...base,tension:.45};
+    expect(chooseVoiceEmotion(options,mood,{provocation:.8,anger:0}).emotion).toBe('neutral');
+    expect(chooseVoiceEmotion(options,mood,{provocation:.8,anger:.8}).emotion).toBe('anger');
+    expect(chooseVoiceEmotion(options,base).emotion).toBe('neutral');
+    expect(chooseVoiceEmotion({neutral:1},{...base,tension:.9}).emotion).toBe('neutral');
+  });
+  it('validates independently configurable provocation and anger',()=>{
+    expect(adaptationConfig({}).conflict).toEqual({provocation:.8,anger:.8});
+    expect(adaptationConfig({CHARACTER_PROVOCATION:'.4',CHARACTER_ANGER:'.9'}).conflict).toEqual({provocation:.4,anger:.9});
+    for(const env of [{CHARACTER_PROVOCATION:'2'},{CHARACTER_ANGER:'-1'},{CHARACTER_ANGER:'angry'}])expect(()=>adaptationConfig(env)).toThrow();
+    expect(buildContext(scenarios[0],{},[],{conflict:{provocation:.8,anger:.8}}).instructions).toContain('pointed challenge');
+    expect(buildContext(scenarios[0],{},[],{conflict:{provocation:0,anger:0}}).instructions).not.toContain('willing to provoke');
   });
   it('lets a tense mood favour strong negative emotions and a calm mood keep Jev\'s choice', () => {
     const jev = { determination: .71, bitterness: .29 };
@@ -135,11 +160,21 @@ describe('DeepSeek as the decision model', () => {
   });
 });
 
+describe('conflict-aware mock fallback',()=>{
+  it('distinguishes an argument from a repeated personal dismissal',async()=>{
+    const model=new MockDecider(),relationship=initialRelationship(alex),signal=new AbortController().signal;
+    const disagreement=await model.judge({character:alex,relationship,conversation:[],line:'I disagree with that assumption.'},signal);
+    expect(disagreement.event).toBe('disagreement');expect(disagreement.nudges.respect).toBe(0);expect(disagreement.majorShift).toBeLessThan(.7);
+    const pressured=await model.judge({character:alex,relationship:{...relationship,tension:.8,lastShift:{event:'insult',turnId:'old',major:true}},conversation:[],line:'Stop being so sensitive. Tell me now.'},signal);
+    expect(pressured.event).toBe('boundary_pressure');expect(pressured.nudges.respect).toBeLessThan(0);expect(pressured.majorShift).toBeGreaterThan(.7);
+  });
+});
+
 describe('turn judgment and voice in the coordinator', () => {
-  function setup(decider: Decider = new MockDecider(), provider: AppraisalProvider = new MockAppraisalProvider()) {
+  function setup(decider: Decider = new MockDecider(), provider: AppraisalProvider = new MockAppraisalProvider(), conflict?:ConflictTuning) {
     const store = new ConversationStore();
     const coordinator = new AdaptationCoordinator(store, scenarios, { provider: 'mock', model: 'unused', timeoutMs: 1500, maxDelta: .1,
-      appraisalTrigger: 'major_shift', decision: { ...jevConfig, provider: 'mock' } }, provider, decider);
+      appraisalTrigger: 'major_shift', decision: { ...jevConfig, provider: 'mock' }, conflict }, provider, decider);
     const session = store.create(scenarios[0]); coordinator.initialize(session.id, 'adaptive');
     return { store, coordinator, id: session.id };
   }
@@ -153,6 +188,16 @@ describe('turn judgment and voice in the coordinator', () => {
     expect(state.lastProcessedTurnId).toBe('u1'); expect(state.relationship!.interest).toBeGreaterThan(initialRelationship(alex).interest);
     expect(h.coordinator.get(h.id).judgments).toHaveLength(1);
     expect(await h.coordinator.judgeTurn(h.id, 'u1')).toMatchObject({ major: false, stateVersion: 1 }); // idempotent
+  });
+  it('passes the configured anger strength through to the real TTS tag selection',async()=>{
+    for(const anger of [0,.8]){
+      const decider=new MockDecider();vi.spyOn(decider,'emotions').mockResolvedValue({choices:[{emotion:'neutral',probability:.85,probabilities:{neutral:.85,anger:.15}}]} as never);
+      const h=setup(decider,undefined,{provocation:.8,anger}),data=h.coordinator.get(h.id);
+      data.states[data.states.length-1].relationship={...initialRelationship(alex),tension:.45};h.store.setAdaptation(h.id,data);
+      const spoken=await h.coordinator.voice(h.id,'a1','That was unnecessary.',new AbortController().signal);
+      expect(spoken.record.sentences[0].emotion).toBe(anger===0?'neutral':'anger');
+      expect(spoken.input.startsWith('<|emotion:anger|>')).toBe(anger!==0);
+    }
   });
   it('a major shift runs the full appraisal first and returns the new instructions', async () => {
     const h = setup();

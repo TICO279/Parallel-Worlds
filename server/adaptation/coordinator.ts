@@ -73,13 +73,13 @@ export class AdaptationCoordinator {
     const context = appraisalContext([...branchTurns(session.branch?.history), ...session.turns], state.lastProcessedOrder + 1);
     // Automatic replies may already exist: never dispatch an acknowledgement of a past utterance.
     const dynamic = this.get(id).mode === 'adaptive' ? state : {};
-    const instructions = buildContext(scenario, dynamic, context).instructions;
-    const turnInstructions = buildContext(scenario, dynamic, context, { includeTurnBrief: true }).instructions;
+    const instructions = buildContext(scenario, dynamic, context, { conflict: this.config.conflict }).instructions;
+    const turnInstructions = buildContext(scenario, dynamic, context, { includeTurnBrief: true, conflict: this.config.conflict }).instructions;
     const contextHash = createHash('sha256').update(instructions).digest('hex');
     const data = this.get(id);
     if (!data.instructionHistory?.some(r => r.version === state.version && r.contextHash === contextHash)) {
       data.instructionHistory ??= []; data.instructionHistory.push({ version: state.version, contextHash, instructions,
-        persistentInstructions: instructions, turnInstructions, triggerTurnId: state.lastProcessedTurnId ?? undefined, at: Date.now(), compilerVersion: 'realism-1' });
+        persistentInstructions: instructions, turnInstructions, triggerTurnId: state.lastProcessedTurnId ?? undefined, at: Date.now(), compilerVersion: 'friction-1' });
       this.store.setAdaptation(id, data);
     }
     return { version: state.version, instructions, persistentInstructions: instructions, turnInstructions, contextHash, triggerTurnId: state.lastProcessedTurnId ?? undefined };
@@ -133,7 +133,7 @@ export class AdaptationCoordinator {
         ...(appraisal && 'schemaVersion' in appraisal && { move: appraisal.brief.move, memory: appraisal.memoryOperations.filter(o => o.action === 'add').map(o => `${o.category}: ${o.text}`) }) };
     }
     const fresh = this.get(id); const latest = fresh.states.at(-1)!;
-    const next = updateRelationship(latest.relationship ?? relationship, { nudges: judgment.nudges, behavior: judgment.behavior, event: judgment.event, major, turnId, majorShift: judgment.majorShift });
+    const next = updateRelationship(latest.relationship ?? relationship, { nudges: judgment.nudges, behavior: judgment.behavior, event: judgment.event, major, turnId, majorShift: judgment.majorShift }, this.config.conflict);
     // A committed appraisal already created this turn's state version; otherwise the relationship gets its own.
     if (latest.lastProcessedTurnId === turnId) fresh.states[fresh.states.length - 1] = { ...latest, relationship: next };
     else if (turn.order > latest.lastProcessedOrder) fresh.states.push(relationshipTransition(latest, next, turn, Date.now()));
@@ -164,7 +164,7 @@ export class AdaptationCoordinator {
     }
     const decisionMs = Math.round(performance.now() - started);
     // The mood reweights Jev's distribution, so a tense character does not sound neutral just because her words are polite.
-    const picks = choices.map(c => chooseVoiceEmotion(c.probabilities ?? { [c.emotion]: c.probability }, relationship));
+    const picks = choices.map(c => chooseVoiceEmotion(c.probabilities ?? { [c.emotion]: c.probability }, relationship, this.config.conflict));
     const record: VoiceRecord = { replyItemId, provider: this.decider.name, ...(this.decider.model && { model: this.decider.model }),
       sentences: sentences.map((s, i) => ({ text: s, emotion: picks[i].emotion, probability: picks[i].probability })), decisionMs, at: Date.now(),
       ...(usage && { usage }), ...(error && { error }) };

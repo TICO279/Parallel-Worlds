@@ -1,12 +1,13 @@
 import { relationshipNames, type DynamicCharacterState, type Relationship, type RelationshipName } from '../../shared/characterState';
 import type { Character, Turn } from '../../shared/domain';
+import { DEFAULT_CONFLICT_TUNING, type ConflictTuning } from './config';
 
 /**
  * Relationship indicators.
  *
  * Slow layer (0–1): comfort, trust, interest, respect, closeness. Every user line nudges them a little;
  * a major emotional shift moves them a lot. Fast layer: tension (0–1) spikes on hurtful moments and halves
- * about every three user lines; warmth (−1…1) follows the recent direction of the conversation.
+ * about every six user lines at the default anger strength; warmth (−1…1) follows the recent direction.
  *
  * Nudges come from the decision model as expected scores in −2…+2 per indicator.
  */
@@ -21,8 +22,9 @@ export const RELATIONSHIP_RULES = {
   behaviorGate: 0.5,
   /** Closeness only rises once comfort and trust are both at least this high. */
   closenessGate: 0.5,
-  /** Tension multiplier per user line (0.794³ ≈ 0.5: halves every three lines). */
+  /** Gentler baseline; the anger setting extends unresolved tension toward a 0.92 decay. */
   tensionDecay: 0.794,
+  persistentTensionDecay: 0.92,
 } as const;
 export const NEGATIVE_EVENTS: ReadonlySet<string> = new Set(['insult', 'offensive_joke', 'hostility', 'boundary_pressure']);
 
@@ -42,7 +44,7 @@ export interface RelationshipUpdate {
   /** P(major shift): an insult that is not "major" still raises tension in proportion. */
   majorShift?: number;
 }
-export function updateRelationship(previous: Relationship, update: RelationshipUpdate): Relationship {
+export function updateRelationship(previous: Relationship, update: RelationshipUpdate, tuning: ConflictTuning = DEFAULT_CONFLICT_TUNING): Relationship {
   const r = RELATIONSHIP_RULES;
   const [step, cap] = update.major ? [r.bigStep, r.bigCap] : [r.smallStep, r.smallCap];
   const next: Relationship = { ...previous };
@@ -54,11 +56,16 @@ export function updateRelationship(previous: Relationship, update: RelationshipU
     next[name] = soft(previous[name], Math.max(-cap, Math.min(cap, delta)));
   }
   const negative = NEGATIVE_EVENTS.has(update.event);
-  let tension = previous.tension * r.tensionDecay;
-  if (negative) tension = update.major ? Math.max(tension, 0.8) : Math.max(tension, Math.min(0.79, 0.3 + 0.5 * (update.majorShift ?? 0)));
+  const decay = r.tensionDecay + (r.persistentTensionDecay - r.tensionDecay) * tuning.anger;
+  let tension = previous.tension * decay;
+  if (negative) {
+    const impact = update.major ? .8 : Math.min(.79, .3 + .5 * (update.majorShift ?? 0));
+    tension = Math.max(tension, Math.min(.99, impact + previous.tension * .2 * tuning.anger));
+  }
   next.tension = round(Math.min(1, Math.max(0, tension)));
   const mean = relationshipNames.reduce((sum, n) => sum + (update.nudges[n] ?? 0), 0) / relationshipNames.length;
-  next.warmth = round(Math.min(1, Math.max(-1, previous.warmth * 0.7 + 0.3 * (mean / 2) - (negative ? 0.2 : 0))));
+  const carry = .7 + .2 * tuning.anger;
+  next.warmth = round(Math.min(1, Math.max(-1, previous.warmth * carry + (1 - carry) * (mean / 2) - (negative ? .2 + .1 * tuning.anger : 0))));
   if (update.major || negative) next.lastShift = { event: update.event, turnId: update.turnId, major: update.major };
   return next;
 }
@@ -73,13 +80,15 @@ export function relationshipTransition(previous: DynamicCharacterState, relation
 
 const band = (v: number) => v < 0.35 ? 'low' : v < 0.65 ? 'medium' : 'high';
 /** Words, not numbers, for Higgs: bands only change occasionally, so instructions stay stable. */
-export function describeRelationship(r: Relationship): string {
+export function describeRelationship(r: Relationship, tuning: ConflictTuning = DEFAULT_CONFLICT_TUNING): string {
   const slow = relationshipNames.map(n => `${n} ${band(r[n])}`).join(', ');
   const tension = r.tension >= 0.5 ? `high, still affected by the user's ${r.lastShift?.event.replace(/_/g, ' ') ?? 'recent remark'}`
     : r.tension >= 0.2 ? 'lingering' : 'none';
   const warmth = r.warmth > 0.25 ? 'warm' : r.warmth < -0.25 ? 'cool' : 'neutral';
   return `Relationship so far (bands, not exact numbers): ${slow}. Current tension: ${tension}. Current warmth: ${warmth}. ` +
-    'Let these shape how open, trusting and close you are; do not state them aloud.';
+    'Let these shape how open, trusting and close you are; do not state them aloud.' +
+    (r.tension >= .5 && tuning.anger >= .5 ? ' You are visibly irritated: say what bothered you directly, use a clipped or pointed answer, and do not hide the objection behind reassurance, gratitude or a cheerful follow-up. A quick apology does not erase the issue; soften after demonstrated repair.'
+      : r.tension >= .2 && tuning.anger >= .5 ? ' Some irritation remains. Dry pushback or a pointed reminder is appropriate when relevant; do not instantly reset to friendly reassurance.' : '');
 }
 
 /**
@@ -94,12 +103,13 @@ const WARM_WEIGHTS: Record<string, number> = { affection: 1.5, amusement: 1.4, c
   anger: 0.4, bitterness: 0.4, disgust: 0.4, sadness: 0.6, neutral: 0.8 };
 export const NEGATIVE_VOICE: ReadonlySet<string> = new Set(['anger', 'bitterness', 'disgust', 'sadness', 'fear']);
 const ANGER_LIKE: ReadonlySet<string> = new Set(['bitterness', 'disgust']);
-export function chooseVoiceEmotion(probabilities: Record<string, number>, mood: Relationship) {
+export function chooseVoiceEmotion(probabilities: Record<string, number>, mood: Relationship, tuning: ConflictTuning = DEFAULT_CONFLICT_TUNING) {
   const ranked = Object.entries(probabilities).sort((x, y) => y[1] - x[1]);
   const jev = ranked[0] ?? ['neutral', 0];
   // Tension (an unresolved hurt) or a cool mood (warmth below −0.1) both push the voice toward negative emotions.
   const tense = Math.min(1, Math.max(0, (mood.tension - 0.25) / 0.35, (-mood.warmth - 0.1) / 0.3)); const warm = Math.min(1, Math.max(0, (mood.warmth - 0.3) / 0.5));
-  const weight = (e: string) => tense > 0 ? 1 + ((TENSE_WEIGHTS[e] ?? 0.25) - 1) * tense : warm > 0 ? 1 + ((WARM_WEIGHTS[e] ?? 1) - 1) * warm : 1;
+  const tenseWeight = (e: string) => e === 'anger' ? TENSE_WEIGHTS.anger + 4 * tuning.anger : e === 'neutral' ? TENSE_WEIGHTS.neutral - .25 * tuning.anger : TENSE_WEIGHTS[e] ?? .25;
+  const weight = (e: string) => tense > 0 ? 1 + (tenseWeight(e) - 1) * tense : warm > 0 ? 1 + ((WARM_WEIGHTS[e] ?? 1) - 1) * warm : 1;
   // Clearly tense: bitterness and disgust are voiced as anger (their probability joins anger's), so the hurt is audible.
   const candidates = tense < 0.6 ? ranked : Object.entries(ranked.reduce<Record<string, number>>((all, [e, p]) => {
     const key = ANGER_LIKE.has(e) ? 'anger' : e; all[key] = (all[key] ?? 0) + p; return all;

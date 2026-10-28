@@ -175,9 +175,16 @@ Copy `.env.example` to `.env`. Only the first two matter for normal use:
 | `DEEPSEEK_API_KEY` | Recommended. Judges each line, picks voice emotions, writes feedback. |
 | `APPRAISAL_PROVIDER` | `mock` (default, offline rules) or `deepseek` for full model appraisal on major shifts. |
 | `TTS_VOICE` | Voice for the built-in lab character. Ember partners use a voice matching their gender. |
+| `CHARACTER_PROVOCATION` | `0`–`1`, default `0.8`. Stronger independent opinions, pointed challenges and dry banter. |
+| `CHARACTER_ANGER` | `0`–`1`, default `0.8`. Longer-lived irritation and stronger selection of angry TTS delivery when warranted. |
 | Everything else | Timeouts, thresholds and model names; the defaults in `.env.example` are tested. |
 
 Never prefix keys with `VITE_`: keys stay on the server and are never sent to the browser.
+
+Conflict defaults are deliberately strong. Lower the two controls for a gentler baseline;
+`0` retains ordinary independent judgment and appropriate reactions to mistreatment.
+Restart the backend after changing `.env`, then start a fresh date connection.
+See [conflict tuning and verification](docs/conflict-tuning.md).
 
 ## How it works
 
