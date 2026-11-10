@@ -1,4 +1,4 @@
-# Parallel Worlds: simulate your first date 
+# Parallel Worlds: simulate your first date
 
 **Parallel Worlds is a feature a dating app could add as a plugin or extension: before you meet
 a match, simulate your first date with them.** You talk to them by voice. They answer as the
