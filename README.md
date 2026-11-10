@@ -1,21 +1,18 @@
-# Parallel Worlds: simulate your first date
+# Parallel Worlds: Real-Time AI Voice & Social Simulator
 
-**Parallel Worlds is a feature a dating app could add as a plugin or extension: before you meet
-a match, simulate your first date with them.** You talk to them by voice. They answer as the
-person on their profile, have read yours, and react to how the conversation goes. Every line you
-say is a branch point: rewind to any of them and see where a different answer leads. Afterwards,
-see how they felt and get feedback on what you said.
+**Parallel Worlds is a real-time, emotionally aware AI voice conversation simulator that lets users practice high-stakes social interactions in a safe, risk-free sandbox.** Designed as a plugin/extension for dating platforms (demonstrated via the included **Ember** host app), it lets users simulate a first date before meeting a match in real life. 
 
-To show the feature inside a real app experience, this repository includes **Ember**, a mock
-dating app built only as the host. Ember is not the product: its profiles, matches and chats are
-demo data. The **Parallel Worlds** button on a profile is the integration point a real dating app
-would provide. A web **monitor** shows the simulation from the outside, live, for demos and
-analysis.
+You speak naturally by voice. Your partner listens, transcribes, and responds in real time—reacting dynamically with context-driven emotions, vocal inflections, and tone shifts. Every turn is a checkpoint: rewind to any previous moment, fork a parallel reality, and see where a different answer leads. Afterwards, receive diagnostic feedback on how your lines landed and where to improve.
 
-Built for a Boson AI hackathon to show what the Boson APIs can do together: **Higgs Realtime**
-for live speech recognition and dialogue, **Higgs TTS 3** for an expressive voice that matches
-the person, and **DeepSeek** as the fast judge that decides how the person reacts. See
-[How we use Boson AI and DeepSeek](#how-we-use-boson-ai-and-deepseek).
+- **Emotionally Aware & Reactive:** Evaluates sentiment, humor, and rapport turn-by-turn to drive authentic emotional responses and vocal inflections.
+- **Sub-Second Real-Time Voice:** Powered by Boson Higgs Realtime for instant speech recognition, semantic VAD, and immediate interruption (barge-in) handling.
+- **Multiverse Branching & Rewind:** Structured as a state machine so you can step back to any turn, test new dialogue paths, and explore alternate outcomes.
+- **Actionable Post-Date Diagnostic:** Review relationship scores (comfort, trust, interest, respect, closeness) and line-by-line feedback with recommended turning points.
+- **Horizontally Scalable Engine:** Built as a generic state machine—easily adapt the core voice architecture from dating to interview preparation, salary negotiations, or language acquisition.
+
+To demonstrate the feature inside a realistic app experience, this repository includes **Ember**, a mock dating host app (with demo profiles, matches, and chats). The **Parallel Worlds** button on a profile serves as the integration point. A live web **monitor** allows coaches, developers, or presenters to follow the simulation live from an external screen.
+
+Built for the Boson AI Hackathon using **Higgs Realtime** (live speech recognition and dialogue), **Higgs TTS 3** (expressive emotional voice streaming), and **DeepSeek** (fast judgment and sentiment analysis). See [How we use Boson AI and DeepSeek] see [How we use Boson AI and DeepSeek](#how-we-use-boson-ai-and-deepseek).
 
 ## Contents
 
